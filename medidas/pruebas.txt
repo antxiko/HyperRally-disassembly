@@ -1,0 +1,31 @@
+LAS CUATRO PRUEBAS DE HYPER OLYMPIC 2, MEDIDAS EN openMSX
+=========================================================
+Como: openmsx -machine Philips_VG_8020 -cart hyperolympic2.rom
+      -script tools/omsx_prueba_n.tcl, con PRUEBA=1..4.
+El guion para la maquina en 0x422E -justo despues de que 0x4216 ponga la ronda
+y la prueba a 1- y cambia SOLO 0xE016. De ahi en adelante corre el juego con
+sus propios datos. Las capturas estan en docs/imagenes/.
+
+  0xE016   rotulo que sale                  record del mundo que pinta
+  ------   ------------------------------   --------------------------
+     1     110 HURDLERS                     12 SEC 93
+     2     JAVELIN THROW                    96 M 72
+     3     HIGH JUMP                        02 M 36
+     4     1500 METER                       03 min 31
+
+Los cuatro records coinciden byte a byte con la tabla de 0x517B, que INIT copia
+a 0xE040: 00 12 93 / 00 96 72 / 00 02 36 / 00 03 31.
+
+Eso es lo MEDIDO, y no llega mas alla. Los cuatro son records del mundo reales,
+pero TRES ya estaban batidos cuando el cartucho llego a las tiendas, asi que no
+son "los vigentes": quien los tenia, de cuando son y cuales cayeron esta
+cotejado con las progresiones publicas en docs/es/HALLAZGOS.md. Ese cotejo NO
+sale del binario y no se escribe aqui, que es la hoja de lo medido.
+
+EL ROTULO DE LA PRIMERA PRUEBA DICE "110 HURDLERS", NO "110 HURDLES". No es la
+captura: la tira de glifos de 0x64B1 es 0A 01 01 00 0A 12 1E 1B 0E 16 0F 1B 1C
+0A, y en la fuente del cartucho eso se lee " 110 HURDLERS ". La errata esta en
+los datos.
+
+EL MENU es el mismo que en el cartucho hermano: cuatro lineas con un jugador o
+dos y joystick o teclado.

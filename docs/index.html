@@ -1,0 +1,103 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hyper Rally — a commented disassembly</title>
+<style>
+:root{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;--linea:#23262e;
+  --rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+@media (prefers-color-scheme:light){:root{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;
+  --panel:#f7f6f2;--linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}}
+:root[data-theme="dark"]{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;
+  --linea:#23262e;--rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+:root[data-theme="light"]{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;--panel:#f7f6f2;
+  --linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);padding:0 1.25rem 6rem;
+  font:15px/1.7 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.w{max-width:1120px;margin:0 auto}
+.n{max-width:68ch}
+h1,h2,h3,h4{font-weight:400;text-wrap:balance}
+a{color:var(--cyan)}
+img{image-rendering:pixelated;max-width:100%;height:auto;display:block}
+header.top{display:flex;flex-direction:column;align-items:center;gap:1.5rem;
+  padding:4rem 0 2rem;text-align:center}
+header.top img{width:min(100%,642px)}
+.claim{max-width:60ch;color:var(--suave);font-size:1.05rem}
+.claim b{color:var(--tinta);font-weight:400}
+.ficha{display:flex;flex-wrap:wrap;justify-content:center;gap:0 1.5rem;width:100%;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);
+  border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);padding:.85rem 0}
+.ficha b{color:var(--rojo);font-weight:400}
+nav{display:flex;flex-wrap:wrap;gap:1.25rem;justify-content:center;padding:1.25rem 0;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+nav a{color:var(--suave);text-decoration:none;border-bottom:1px solid transparent}
+nav a:hover,nav a:focus{color:var(--tinta);border-bottom-color:var(--rojo)}
+nav.docs{border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);
+  margin-bottom:1rem}
+section{margin-top:4.5rem;scroll-margin-top:1rem}
+section>h2{font-size:1rem;letter-spacing:.1em;text-transform:uppercase;
+  border-left:3px solid var(--rojo);padding-left:.9rem;margin:0 0 1.5rem}
+.cifras{display:grid;gap:1px;background:var(--linea);border:1px solid var(--linea);
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.cifra{background:var(--panel);padding:1.1rem}
+.cifra b{display:block;font-size:1.7rem;color:var(--oro);font-weight:400;
+  font-variant-numeric:tabular-nums;line-height:1.2}
+.cifra span{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--suave)}
+.hall{border-top:1px solid var(--linea);padding-top:1.75rem;margin-top:2.5rem}
+.hall:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.hall h3{margin:0 0 .75rem;font-size:1.15rem;color:var(--rojo)}
+.hall h4{color:var(--oro);margin:1.5rem 0 .5rem;font-size:.95rem}
+.hall p{margin:0 0 1rem}
+pre.asm{background:var(--panel);border-left:2px solid var(--verde);margin:1.25rem 0;
+  padding:1rem 1.1rem;overflow-x:auto;font-size:13px;line-height:1.6;color:var(--tinta)}
+.par{display:grid;gap:1.25rem;grid-template-columns:1fr}
+@media(min-width:820px){.par{grid-template-columns:1fr 1fr}}
+.par figure{margin:0}
+table{border-collapse:collapse;width:100%;margin:1.25rem 0;font-size:13px;display:block;
+  overflow-x:auto}
+th,td{text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--linea)}
+th{color:var(--suave);font-weight:400;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+td.num{font-variant-numeric:tabular-nums;color:var(--oro)}
+.nivel{margin-top:2rem}
+.nivel h3{margin:0 0 .9rem;font-size:.95rem;letter-spacing:.06em;text-transform:uppercase}
+.nivel em{color:var(--cyan);font-style:normal}
+.sep{color:var(--suave);margin:0 .6rem}
+.rejilla{display:grid;gap:.9rem;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.rejilla figure{margin:0;background:var(--panel);box-shadow:0 0 0 1px var(--linea)}
+.rejilla figcaption{display:flex;justify-content:space-between;padding:.45rem .65rem;
+  font-size:11px;color:var(--suave);border-top:1px solid var(--linea)}
+.dir{font-variant-numeric:tabular-nums;color:var(--verde)}
+footer{margin-top:5rem;padding-top:1.5rem;border-top:1px solid var(--linea);
+  color:var(--suave);font-size:12px}
+
+/* Aviso de trabajo en curso: tiene que verse antes que las cifras, porque un
+   100% mal leido hace mas dano que no ponerlo. */
+.aviso{background:#3a2a10;border-left:3px solid var(--oro);margin:1.5rem auto;
+  padding:1rem 1.2rem;max-width:900px;border-radius:4px}
+.aviso p{margin:0;color:var(--tinta);font-size:15px;line-height:1.65}
+.galeria{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:1.5rem;margin:1.5rem 0}
+.galeria figure{margin:0}
+.galeria img{width:100%;height:auto;image-rendering:pixelated;
+  border:1px solid var(--linea);border-radius:3px}
+.galeria figcaption{color:var(--suave);font-size:13px;margin-top:.5rem}
+audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
+</style>
+<header class="top">
+  <h1>Hyper Rally</h1>
+  <p class="claim">A twelve-stage rally in a 16 KB cartridge: a fake-3D road, a dashboard with a speedometer, fuel, gear and clock, rival cars that collide by depth, and everything driven by the per-frame interrupt.</p>
+  <p class="ficha">Konami · <b>© Konami 1985</b> · An <b>RC-718</b> 16 KB cartridge · MSX1 · <b>page 1</b> · Dump <b>eca2c0d6…</b></p>
+</header>
+<p class="ficha" style="border:1px solid var(--oro);padding:.8em 1em;margin:1.5em 0">
+<b>There is not one illustration or capture here.</b> The font and the tiles are <b>drawn from the bytes of the ROM</b>, by running in Python the same script decompressor the Z80 runs. The listing and the numbers come from the binary and are reproducible with <code>make</code>.</p>
+<nav><a href="#numbers">The numbers</a><a href="#findings">What turned up</a><a href="#screens">What it draws</a><a href="GETTING-STARTED.html">Getting started</a><a href="THE-GAME.html">The game</a><a href="THE-CARTRIDGE.html">The cartridge</a><a href="THE-CODE.html">The code</a><a href="FINDINGS.html">Findings</a><a href="IN-THE-EMULATOR.html">In the emulator</a><a href="OPEN-QUESTIONS.html">Open questions</a><a href="es/" style="margin-left:auto;color:var(--oro)">En castellano</a></nav>
+<section id="numbers">
+  <h2>The cartridge in numbers</h2>
+  <div class="cifras"><div class="cifra"><b>100%</b><span>of the binary explained</span></div><div class="cifra"><b>429</b><span>routines identified</span></div><div class="cifra"><b>12</b><span>stages of the rally</span></div><div class="cifra"><b>6,452</b><span>bytes of code</span></div><div class="cifra"><b>9,932</b><span>bytes of data</span></div><div class="cifra"><b>0</b><span>bytes unidentified</span></div></div>
+</section>
+<section id="findings"><h2>What turned up when we took it apart</h2><div class="hall"><h3>It carries Konami's hidden mark</h3><p>At the end of the ROM, behind the filler, Konami hid in many cartridges its catalogue number and the title in katakana; <b>Manuel Pazos</b> (<a href="https://twitter.com/ManuelPazosMSX">@ManuelPazosMSX</a>) found it. Here it is: the last eleven bytes from 0x7FF5 are the title reversed, its length, the <b>18</b> of RC-718 in BCD and the 0xAA that closes it.</p></div><div class="hall"><h3>One dead loop, and the whole machine in the interrupt</h3><p>INIT hooks the interrupt to 0x4051 and falls into a <code>jr</code> to itself. From there <b>the main program does nothing</b>: each frame the interrupt reads 0xE000 (the state, 0 to 8), jumps through a table of nine handlers, and inside each one the byte 0xE001 splits the sub-states with <code>djnz</code> chains.</p></div><div class="hall"><h3>The road is a table of shapes indexed by curvature</h3><p>There is no geometry: 0x68D0 reads 0xE074 —the curvature and position of the track— and indexes the table at 0x767C to pick which road shape to draw. The stripes move toward the player by scrolling a buffer (0x707A) at the speed's pace, and the depth scaling of the roadside objects comes from the tables at 0x6CD5.</p></div><div class="hall"><h3>Twelve stages, different terrains, and one is water</h3><p>0xE060 runs from 1 to 0x0C and with it, through the table at 0x481A, the background composer of each stage is chosen. The parameter 0xE061 (from the table at 0x4372) marks the terrain: when it is 8 the stage is <b>water</b> and the surface is animated apart (0x71AC). The composers are reused: eight routines cover the twelve stages.</p></div><div class="hall"><h3>The sound is the house's three-channel player</h3><p>The engine at 0x5FB7 walks three fourteen-byte records (0xE010), reads the melodies with its command interpreter and writes the PSG through the BIOS. It is the same player framework Konami spread across its MSX cartridges; 0x5ED9 starts a melody or an effect by its number, checking priority first so it does not step on what already plays.</p></div><div class="hall"><h3>The player car is six sprites, and rivals collide by depth</h3><p>The car is assembled from six sprites (template at 0x66E2) that 0x65FA repositions every frame from the wheel. The three rivals keep their records at 0xE138/48/58; 0x7C34 sorts them by nearness before drawing, and the crash (0x7CCB) brakes sharply by the relative speed. Hitting a roadside obstacle halves the speed (0x7F89).</p></div></section>
+<section id="screens">
+  <h2>What the cartridge draws</h2>
+  <p class="n">Under each picture is where it comes from and what is on it.</p>
+  <div class="galeria"><figure><img src="data:image/png;base64,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" alt="The cartridge's font, drawn from the ROM by <code>tools/graficos.py</code>, decompressing the script at 0x4DEA with the same format the Z80 uses. Digits, symbols and the alphabet the whole game is written with, including the km/h unit of the speedometer"><figcaption>The cartridge's font, drawn from the ROM by <code>tools/graficos.py</code>, decompressing the script at 0x4DEA with the same format the Z80 uses. Digits, symbols and the alphabet the whole game is written with, including the km/h unit of the speedometer</figcaption></figure><figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZEAAADJCAIAAABt6ZguAAANgklEQVR4nO2dwZEcNwxFN5QNQUfF4PwDcAgOwZ7LFL2kMPgA2QS7XxV8kbvfAODnW9WUZH/9/v0XRVHUKfX13z///PN3oL6/f/2o/1D9L8aYzq76j+s/d4iK9bm6KwNld2V8otGDfYKeZoxPUbsyPtfelQRvURO7AnUlCmcJfeKsjwQ7DPnES9sedhV70e4K1JUonCX0ibM+Euww5BMvbXvYVexFuytQV6LizuqbUDszLsPcIWMvrrg84a6MZ8L6s9dufLSzK+ng7BNMrn24q4ldgboShbP++OKKyxPuyngGZ/mr7D0E5UfhrD++uOLyhLsynsFZ/ip7D0H5UV/2VxhS5VHDbEkv2l15tuNMvKeZ/Ck61y6hjF+xv5FUd5VM53BAz0cb8LL3EJQfhbN+vmg8g7OkXSXTORzQ89EGvOw9BOVH4ayfLxrP4CxpV8l0Dgf0fLQBL3sPQflRX3ZMpVr0xyZizLYraSlGe5d11X+K8UzepE6UlLZFzip1eUBtQeEsoT2c5S+cBWoRCmcJ7eEsf+EsUItQY2d5kmR3JlX/uYu68jCNZxbpL4+KLbn/uDzKOaA0adnLA2oLCmf9ZBrP4Cx/7HAWqEUonPWTaTyDs/yxw1mgFqE+OCucrWT089+GtKjk9WsHTHY18RQnDhheu72rZAaGAyb3D+oGKJwlwHGWtKtkBoYDJvcP6gYonCXAcZa0q2QGhgMm9w/qBiivswyKM6bSpzhRnlsRvof5AcO78izNOaC0f5wFqj4KZwVX7xkwvCvP0pwDSvvHWaDqo3BWcPWeAcO78izNOaC0f5wFqj5KdpaNixH6X5n7dY+neU+Fu7IHlK70cMDYi31t9LvdVc3LA2oLCmfhrF8tamIYpLnsrmpeHlBbUDgLZ/1qURPDIM1ld1Xz8oDagno5i6Io6pR6OaumTZO/DZnY1ftXwl31paKMZ1afYGzk377/BkY+DNKkKspee3LbNiq89tiLK3I1DIM04BCFs7TVx7rKZ8tO/NITjI2Ms5Ko8NpjL67I1TAM0oBDFM7SVh/rKp8tO/FLTzA2Ms5KosJrj724IlfDMEgDDlE46/PG84HIo+zELz3B2Mj3cJZ9grElDweMvTgxoityZe/K0+cQhbM+bzwfiDzKTvzSE4yNjLP828NZ/oZxlmvj+UDkUXbil55gbGSc5d8ezvI3fKqzlnbVP7wo8R5UOPHSioaoWPTVAcNhmJgraXvtgMltD1Gxtecjau9KmtS5K8+kw13hrM+rz3c1PEUPynOcOOsC1HDA5LaHqNja8xG1dyVN6tyVZ9LhrnDW59XnuxqeogflOU6cdQFqOGBy20NUbO35iNq7kiZ17soz6XBXdZ0VS1I4W6Cmo6RQGnX9l1ATUc4BYy+G166eoDSpvauYqloUzgK1CoWzvnFWtyucNS1boKajcNY3zup2Vc5ZEzu7OFugpqOSfrFR4Xt48a6ud1bNASUh2CicBWoVCmd94yyctW71oKajcNY3zqrvrKSqNq4e1BSUGgZnV8c5S2p47h8xuTgMqrNiccJZoFahcNaPPeAsnLVq9aCmoHDWjz3grHs6a+KQPTP8LZs6oNpVspnhgLFIbRzQeXliKHVA6VMqOEsNg1RzcxW7vEMUztJW7xnH2VWyGWcgig/ovDwxlDqg9Ck4a1ZEJTjO0gpnTR/QeXliKHVA6VNw1qyISvAbOssZiPApSnOpu8qv3bOQFQP2H1ffWbFtt6jYi86Iel7MD2ifYHJAJ0pdO84SCmd9RKlh2Lj22LZbVOxFZ0Q9L+YHtE8wOaATpa4dZwmFsz6i1DBsXHts2y0q9qIzop4X8wPaJ5gc0IlS1/5yFkVR1Cn1clbSfHnHh1Gen7E2auJP6VIoiQAqiZKyCiqJwllCXg9CSQRQSZSUVVBJFM4S8noQSiKASqKkrIJKonCWkNeDUBLhmSgpYKDqoHCWEP2DUBLhmSgpYKDqoHCWEP2DUBLhmSgpYKDqoHCWEH1EcyeUFDBQdVA4S4g+zroTSgoYqDoonCVEH2fdCSUFDFQd1AdnGS8PcQZK+hScFQsEqCsvD6gtKJwlRB9n3QklBQxUHRTOEqKPs+6EkgIGqg7qa4iLcXFWEiURQCVRsZCD2o7CWUL0cdadULGQg9qOwllC9HHWnVCxkIPajsJZQvRx1p1QsZCD2o7CWUL0cdadULGQg9qOwllC9HHWnVCxkIPajho7y8CFr7SUNpwVCwSoKy8PqC0onCVEH2fdCSUFDFQdFM4Soo+z7oSSAgaqDupIZ0l5PQglEUAlUVJWQdVB4axCKIkAKomSsgqqDgpnFUJJBFBJlJRVUHVQL2dRFEWdUvLvs04Us/FvDWYPBwUK1HYUzrrDKYIC9RwUzrrDKYIC9RwUzrrDKYICdRxKIrQonFXoFEGBeg5KIrQonFXoFEGBeg5KIrQonFXoFEGBeg5KIrQonFXoFEGBeg5KIrQonFXoFEGBeg5KIrQonFXoFEGBeg5KIrQonFXoFEGBeg5KIrQonFXoFEGBeg5KIrQonFXoFEGBeg5KIrQonFXoFEGBeg5KIrQonFXoFEGBeg5KIrQonFXoFEGBeg5KIrQonFXoFEGBeg5KIrQonFXoFEGBeg5KIrQonFXoFEGBeg5KIrQonFXoFEGBeg5KIrQonFXoFEGBeg5KIrQonFXoFEGBeg5KIrQonFXoFEGBeg5KIrQonFXoFEGBeg5KIrSol7MoiqJOKfn3WbYCQYHyoIwf4EOU9NGg7o3CWaA2oNSY1rw8oLagcBaoDSg1pjUvD6gtKJwFagPKk873w2UvD6gtKJwFagPKk873w2UvD6gtKJwFagPKk873w2UvD6gtKJwFaozyEFSUJ5Q9vOzlAbUFhbNAjVEegoryhLKHl708oLagcBaoMcpDUFGeUPbwspcH1BYUzgI1RnkIKsoTyh5e9vKA2oLCWaDGKA9BRXlC2cPLXh5QW1A4C9QY5SGoKE8oe3jZywNqCwpngRqjPAQbVTPxoE5H4SxQY5SHYKNqJh7U6SicBWqM8hBsVM3EgzodhbNAjbMlJWl1TEGBeqNwFqhxtqQkrY4pKFBvFM4CNc6WlKTVMQUF6o3CWaA+oHrm9TEFBeqNwlmgPqB65vUxBQXqjcJZoD6geub1MQUF6o3CWaA+oHqm55myiQd1OgpngfqA6pmeZ8omHtTpKJwF6gOqZ3qeKZt4UKejXs6iKIo6pV7Oiv1MHirQ85jn4xZ1lUfFCOqAKiq2dvUEpYbVtefD4NlePgzDtUvt5Qc8EeWJqPMO4iwNFSOoA6qo2NrVE5Qaxln+KiuaiShPRJ13EGdpqBhBHVBFxdaunqDUMM7yV1nRTER5Iuq8g+Pv4KVSO5u4L+eQyZi2qNiLzgHDqNiL9q6k81LXng9DLKvhHxV9w3MvjmcPnj5bVLK9uaKRTtwYGWfJqGTQ8/dwiIq9aO9KOi917fkwxLKKs6RdJQnOMEgj4ywZlQx6/h4OUbEX7V1J56WuPR+GWFZxlrSrJMEZBmlk4fssZ7Y8JxSOaeww5upPelEdUEI5s6UmPnZwakwleNnvaEBtQeEsgYmz/NvDWaAWoXCWwMRZ/u3hLFCLUBOcFb484SErOMvzvDpgKWfFMmCjwmGQTtw54C6UmnY1otsHHKKkE7dzhbO0QEjPqwNKqPDanTHNZ6tHhcMw8fJsR6lpVyO6fcAhSjpxO1c4SwuE9Lw6oIQKr90Z03y2elQ4DBMvz3aUmnY1otsHHKKkE7dzhbO0QEjPTxxw4tqdMc1nq0etCAOoI1AT9YezBCbO8jeMs0C1KJyFs3BWpEDtQp3krIn7kmZTVx/WX3j1sXGcqPCAsYMLdxUOw3NQaq5qDpjMQDsgzhLgOMu/PZw1C6XmquaAyQy0A+IsAY6z/NvDWbNQaq5qDpjMQDug9+9Ie1a56IuVWKmrV690vqvYi8NT9Dy/NKbOXV3cFahbonDW52ZwVmB7FboCdUsUzvrcDM4KbK9CV6Buifrf91mxyxPuTLWDRGhRsR5U/ZVylue87LV7XlwR03xXzlzF2ls0YGwce8Bkrb7O4a5wljAyzvrx4sQwTOzKmatYe4sGjI1jD5gsnDVhyHBMk0F3DqiipKMyPg5nSWHwoDyFs/wNz3cWRVHUKfW/7+DzP1on2hQUKFCgehTOAgUK1EkonAUKFKiTUBP+7g7OAgUK1GUonAUKFKiTUDgLFChQJ6G+ynYGChQoUD0KZ4ECBeokFM4CBQrUSSicBQoUqJNQOAsUKFAnoXAWKFCgTkLhLFCgQJ2EwlmgQIE6CYWzQIECdRIKZ4ECBeokFM4CBQrUSSicBQoUqJNQOAsUKFAnoXAWKFCgTkLhLFCgQJ2EwlmgQIE6CYWzQIECdRIKZ4ECBeok1MtZFEVRp9Tk32dRFEUtLZxFUdRJhbMoijqpcBZFUScVzqIo6qTCWRRFnVQvZ038/0hTFEUtLZxFUdRJhbMoijqpcBZFUScVzqIo6qTCWRRFnVQ4i6KokwpnURR1UuEsiqJOKpxFUdRJhbMoijqpcBZFUScVzqIo6qTCWRRFnVQ4i6KokwpnURR1UuEsiqJOKpxFUdRJxf+TlaKok+pfMBYlR2jFyegAAAAASUVORK5CYII=" alt="The road and scenery tiles that follow the font in the same block, decompressed the same way. They are the pieces the track edges and each stage's landscape are built from"><figcaption>The road and scenery tiles that follow the font in the same block, decompressed the same way. They are the pieces the track edges and each stage's landscape are built from</figcaption></figure></div>
+</section>
+<footer><p>This is documentation and preservation work: the code and artwork still belong to their authors and to Konami, and the cartridge image is not distributed.</p></footer>

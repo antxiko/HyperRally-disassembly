@@ -1,0 +1,35 @@
+# Puntos de entrada de Hyper Rally (Konami, RC-718). ROM de 16 KB en 0x4000.
+#
+# La BIOS lee la cabecera "AB" y llama a INIT tras inicializar la maquina.
+0x4010   # INIT, declarado en la cabecera del cartucho (bytes 2-3: 10 40)
+
+# INIT engancha la interrupcion en H.KEYI (0xFD9A) apuntando a 0x4051, y cae
+# en `jr $` en 0x404F: todo el trabajo lo hace la interrupcion.
+0x4051   # rutina de interrupcion (H.KEYI)
+
+# Rutina de dibujo (19 filas de 16 bytes desde 0x518E a la VRAM) que NINGUNA
+# instruccion del cartucho referencia: se alcanza por un mecanismo que no deja
+# rastro estatico, o es codigo muerto. Decodifica limpio hasta el ret de 0x4DE9.
+0x4dcc
+
+# === AUTO destinos indirectos (tablas 0x407F + push/ret) ===
+0x40bc  # tabla
+0x40f5  # tabla
+0x40fd  # tabla
+0x4127  # tabla
+0x412d  # tabla
+0x421b  # tabla
+0x422e  # tabla
+0x4270  # tabla
+0x42e9  # tabla
+0x46a4  # push hl en 0x40a3
+0x51b8  # tabla
+0x586c  # tabla
+0x5a44  # tabla
+0x5b22  # tabla
+0x5b68  # tabla
+0x5d5b  # tabla
+0x5d86  # tabla
+0x5e94  # tabla
+0x68be  # push hl en 0x6868
+0x68c7  # push hl en 0x68a2

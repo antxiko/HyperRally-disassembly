@@ -1,0 +1,1028 @@
+# Anotaciones de Hyper Rally (Konami, MSX1, cartucho RC-718).
+#
+# Cada linea va anclada a una direccion, asi que los comentarios sobreviven a
+# un retrazado. Directivas: L=etiqueta, C=comentario de linea, B=cabecera de
+# bloque, D=rango de datos, F=anchura de las filas de un bloque de datos. Todo
+# sale de leer el codigo que lo usa. Sin acentos a proposito. Las directivas van
+# ordenadas por direccion; mkasm las aplica por su ancla, no por su orden.
+#
+# EL CARTUCHO. 16 KB en la pagina 1 (0x4000-0x7FFF), sin cambio de banco. La
+# cabecera AB declara solo INIT (0x4010); STATEMENT, DEVICE y TEXT van a cero.
+# INIT engancha la interrupcion en H.KEYI (0xFD9A) apuntando a 0x4051, pone la
+# pila en 0xE800, limpia 0xE000-0xE7FF y cae en un bucle muerto: de ahi en
+# adelante todo el juego lo mueve la interrupcion de cada cuadro.
+#
+# LA MAQUINA DE ESTADOS. La interrupcion llama a 0x4089, que lee la palabra de
+# 0xE000: el byte bajo (0xE000) es el ESTADO PRINCIPAL, 0..8, y con el se indexa
+# la tabla de 0x40AA para saltar (via 0x407F) al manejador; el byte alto (0xE001)
+# es el SUBESTADO, y cada manejador lo reparte con cadenas de djnz.
+#
+# EL DIBUJO. El cartucho guarda guiones comprimidos que unos interpretes vuelcan
+# a la VRAM: el de rachas (0x446D, con su nucleo reubicado a 0xE310) y el de
+# bloques destino-cuenta (0x45EC). SCREEN 2: nombres en 0x3800, sprites en 0x3B00.
+#
+# EL MAPA DE LA RAM (0xE000-0xE7FF, la pila arriba en 0xE800)
+#   E000 estado principal (0..8), indexa la tabla de saltos de 0x40AA
+#   E001 subestado dentro del manejador (lo reparten los djnz)
+#   E002 banderas de modo: bit6 = demo/atraccion en marcha
+#   E003 fase de la interrupcion, sube 1 por cuadro y se enmascara a 0..7
+#   E004 retardo en cuadros: los manejadores lo cargan y esperan a que baje a 0
+#   E006 candado de reentrada de la interrupcion (bit0)
+#   E009/E00A/E00B lecturas de los mandos (0xE00A recien pulsados)
+#   E00D..E00E puntero de los rotulos que bajan
+#   E010-E03A fichas de los tres canales de sonido (14 bytes cada una)
+#   E040.. records
+#   E055/E056 marca en curso    E057 tope de la marca
+#   E058-E05A puntuacion en BCD (seis digitos)
+#   E05B/E05D punteros de posicion en la etapa (arrancan en 0x8006)
+#   E060 numero de etapa, de 1 a 0x0C y vuelve a 1
+#   E061 parametro de la etapa (tabla 0x4372 indexada por E060)
+#   E062/E063/E064 banderas y contadores de la secuencia de estados
+#   E070-E087 estado de la carrera y del coche; E085 = partida en marcha
+#   E0A0.. fichas de actores (coches, obstaculos)
+#   E0D0-E0DE trabajo del descompresor de guiones
+#   E1C0-E1DF rutina de rotulos reubicada (de 0x455A)
+#   E310-E33E nucleo out(c),a del descompresor, reubicado (de 0x45BD)
+
+D 0x4000 0x4010 cabecera_cartucho  AB, el puntero INIT (0x4010) y los tres punteros a cero
+F 0x4000 2,w4
+B 0x4010 ARRANQUE. La BIOS entra aqui por la cabecera del cartucho.
+L 0x4010 INIT  Prepara la maquina y engancha la interrupcion
+C 0x4011 modo de interrupcion 1
+C 0x4013 escribe un jp en el gancho H.KEYI (0xFD9A/0xFD9B)...
+C 0x4018 ...que apunta a la rutina de interrupcion, 0x4051
+C 0x401e la pila arranca en 0xE800
+C 0x4021 borra de un ldir la RAM de trabajo, 0xE000-0xE7FF
+C 0x402e inicializa el VDP y sus tablas
+C 0x403b prepara la primera pantalla
+C 0x4046 lee los mandos una vez
+L 0x404f BUCLE_MUERTO  jr a si mismo: el trabajo lo hace la interrupcion
+C 0x404f bucle muerto: a partir de aqui solo trabaja la interrupcion
+L 0x4051 INT  Rutina de interrupcion: un cuadro de juego
+C 0x4051 lee el estado del VDP (limpia la peticion de interrupcion)
+C 0x4055 atiende el sonido
+C 0x4058 candado de reentrada: si ya estaba dentro, se va
+C 0x4061 relee los mandos
+C 0x4064 avanza la maquina de estados
+C 0x4068 suelta el candado
+L 0x406b INT_406B
+C 0x4070 segunda pasada de sonido si toca (signo)
+L 0x4075 HL_MAS_A  HL += A (con acarreo a H), devuelve
+L 0x407a DE_MAS_A  DE += A (con acarreo a D), devuelve
+L 0x407f SALTA_POR_TABLA  Salta a la entrada A de la tabla que sigue al call
+C 0x407f saca la direccion de la tabla (esta detras del call)
+C 0x4080 indexa por 2*A
+C 0x4088 salta a la rutina de esa casilla
+L 0x4089 MAQUINA_ESTADOS  Reparte segun 0xE000 (estado) y 0xE001 (subestado)
+C 0x4089 sube la fase de interrupcion 0xE003 y la enmascara a 0..7
+C 0x4093 bit6 de 0xE002: modo demo
+C 0x4098 C = estado (0xE000), B = subestado (0xE001)
+C 0x409c A = estado, con el se indexa la tabla de abajo
+C 0x40a3 fuera de demo empuja la rutina de mandos como retorno
+L 0x40a7 MAQUINA_ESTADOS_40A7
+C 0x40a7 salta al manejador del estado
+D 0x40aa 0x40bc tabla_estados  Nueve manejadores de estado, indexados por 0xE000
+F 0x40aa w9
+B 0x40bc ESTADO 0. Secuencia de arranque de una etapa.
+L 0x40bc ESTADO_0  Primer manejador; el djnz reparte los subestados
+C 0x40bc subestado 1 cae aqui; los demas saltan con el djnz
+C 0x40c7 vuelca el guion 0x4C2C
+L 0x40d0 EST0_SUB2
+C 0x40d5 espera a que 0xE004 baje a cero
+L 0x40de EST0_SUB3
+C 0x40de encadena varias rutinas de dibujo del cuadro
+L 0x40f5 ESTADO_1  Espera con retardo y salta al cierre de subestado
+L 0x40fd ESTADO_2
+L 0x4104 REARMA_FASE
+C 0x4104 reinicia la fase y pone 0x20 cuadros de espera
+L 0x4105 PON_ESPERA_32
+L 0x4110 EST2_SUB2
+L 0x411d PON_ESPERA_20
+L 0x411f FIJA_ESPERA  Guarda A en 0xE004 (retardo en cuadros)
+L 0x4122 SIGUE_SUBESTADO  inc 0xE001 y vuelve
+C 0x4122 pasa al siguiente subestado
+L 0x4127 ESTADO_3
+L 0x412d ESTADO_4  Pinta el numero de etapa
+C 0x412d el djnz reparte los cuatro subestados del estado 4
+C 0x413d si la etapa es 0x0D usa otro rotulo
+L 0x4149 EST4_ROTULO
+C 0x4149 vuelca el rotulo de la etapa
+C 0x415c escribe el digito de las decenas de etapa en la VRAM
+L 0x4162 EST4_UNIDADES
+C 0x4165 y el de las unidades
+L 0x4171 EST4_UNIDADES_4171
+L 0x4176 EST4_SUB2
+L 0x417f EST4_SUB3
+C 0x417f arranca la carrera en el subestado 3
+C 0x418e si la etapa vale 0x10 dibuja un adorno extra
+L 0x41a1 EST4_SUB4
+C 0x41a1 espera a que acabe el aviso (0xE020)
+C 0x41ab cuenta atras en 0xE06C
+L 0x41bf EST4_SUB5
+C 0x41bf actualiza la carrera y mira el fin de tramo (0xE02E)
+C 0x41c4 espera a que se cierre el intento (0xE02E)
+L 0x41e0 EST4_SEL_ROTULO
+L 0x41e7 EST4_PINTA
+L 0x41ea PON_ESPERA_20B
+L 0x41ec FIJA_ESPERA_Y_AVANZA
+C 0x41ec guarda el retardo y avanza el estado principal
+L 0x41ef AVANZA_ESTADO  inc 0xE000, subestado a 0
+L 0x41f3 LIMPIA_SUBESTADO
+L 0x41f8 EST4_SUB6
+C 0x41f8 limpia el bloque de estado de carrera 0xE061..
+C 0x41fb pone a cero el bloque de estado de la carrera
+L 0x421b ESTADO_5
+C 0x421e segun 0xE062/0xE063 rebota a otros subestados
+L 0x422e ESTADO_6
+C 0x422e el djnz reparte los subestados del estado 6
+C 0x4233 si el jugador ha llegado a meta (0xE062), rebota
+L 0x4247 EST6_SUB2
+L 0x424e EST6_REDIBUJA
+L 0x4254 EST6_SUB3
+L 0x4256 EST6_LIMPIA_DEMO  borra bit6 de 0xE002 (sale de demo)
+L 0x4260 EST6_SUB4
+C 0x4260 vuelca dos veces el mismo guion (0x4C72)
+L 0x4270 ESTADO_7
+C 0x4270 el djnz reparte los subestados del estado 7
+L 0x4283 EST7_SUB2
+C 0x4283 si 0xE063 esta a cero, pasa de etapa
+L 0x4296 EST7_AVANZA_ETAPA  inc 0xE060
+L 0x429f EST7_SUB3
+C 0x429f compara la posicion alcanzada con la meta de la etapa
+C 0x42a5 descomprime el siguiente trozo del guion de pista
+C 0x42ab si la etapa llega a 0x0D, fin
+C 0x42b0 prepara el bloque del cronometro
+C 0x42b3 lee la posicion alcanzada (0xE05B) en HL
+C 0x42be la resta de la meta decide si clasifica
+C 0x42bf compara la posicion alcanzada (0xE05B) con la meta
+C 0x42cc si el crono marca justo 0x3F, tambien pasa
+C 0x42d5 si no, marca fallo (0xE063) y el rotulo rojo
+L 0x42e0 EST7_PINTA_RESULTADO
+L 0x42e9 ESTADO_8
+C 0x42e9 el djnz reparte los subestados del estado 8
+L 0x4302 EST8_CUENTA
+C 0x4302 solo cuenta en la fase 0 de la interrupcion
+C 0x4306 solo trabaja en la fase 0 de la interrupcion
+L 0x431e EST8_CUENTA_431E
+L 0x4321 EST8_SUB2
+C 0x4321 borra la pizarra y vuelca su rotulo
+C 0x4334 rellena una franja de la VRAM
+L 0x4349 PREPARA_ETAPA  Limpia el bloque 0xE058-0xE178 y avanza la etapa
+C 0x4349 borra de un ldir el estado de la etapa
+C 0x4356 sube 0xE060 a la etapa siguiente
+C 0x435a arranca los dos punteros de posicion en 0x8006
+L 0x4364 CARGA_PARAM_ETAPA  0xE061 = tabla_param_etapa[0xE060]
+C 0x4367 indexa por el numero de etapa
+L 0x4371 tabla_param_etapa_base
+D 0x4372 0x437f tabla_param_etapa  Parametro por etapa (indexada por 0xE060)
+F 0x4372 13
+L 0x437f AVANZA_ETAPA_CICLA  Etapa +1; al llegar a 0x0D vuelve a 1
+C 0x4387 0x0D es una vuelta entera: reinicia a la etapa 1
+L 0x438d AVANZA_ETAPA_CICLA_438D
+L 0x4393 LIMPIA_NOMBRES  Rellena la tabla de nombres 0x3800 (0x300 bytes)
+L 0x4396 LIMPIA_NOMBRES_1
+L 0x4398 LIMPIA_NOMBRES_1_4398
+C 0x4398 guarda el byte de relleno mientras limpia los sprites
+L 0x43a6 LIMPIA_FRANJA  Rellena 0x2A0 bytes desde 0x3860 con el tile 1
+L 0x43b1 OCULTA_SPRITES  Y=0xDF en los 32 sprites de 0x3B00 (los saca de pantalla)
+L 0x43b6 ESCRIBE_CADA_4  Escribe A en la VRAM cada 4 bytes, B veces
+L 0x43bb ESCRIBE_CADA_4_43BB
+L 0x43c2 OCULTA_SPRITES_DESDE_C  Igual desde 0x3B0C, 0x1D sprites
+L 0x43c9 SUMA_PUNTOS  Suma en BCD a la puntuacion (0xE058), tope 999999
+C 0x43cb en demo (bit7 de 0xE002) no puntua
+C 0x43d5 suma tres bytes en BCD con ajuste decimal
+C 0x43e3 si desborda, clava marca y mejor en 9999
+C 0x43e5 al desbordar, clava la marca en 9999
+L 0x43f2 ACTUALIZA_TOPE
+C 0x43f2 actualiza el tope de la marca si procede
+C 0x43f6 compara con el tope guardado
+L 0x4402 GUARDA_MARCA
+C 0x4402 y lo actualiza si procede
+L 0x440c DIBUJA_PANEL  Vuelca el guion 0x4C42 y refresca actores
+C 0x440c vuelca el guion del panel y refresca el estado
+L 0x441e PINTA_MARCADOR  Escribe los digitos BCD del marcador en 0x3822
+C 0x4424 bit6 de 0xE002: en demo pinta otra cosa
+L 0x4431 PINTA_MARCADOR_A
+L 0x4436 PINTA_MARCADOR_BUCLE
+C 0x4436 parte cada byte BCD en dos digitos y los escribe
+L 0x4437 PINTA_MARCADOR_BUCLE_4437
+C 0x4437 parte cada byte BCD en dos digitos
+C 0x443e el nibble alto es la decena
+C 0x4445 el nibble bajo la unidad
+L 0x4451 PREPARA_PANTALLA_CARRERA  Limpia pantalla, dibuja marco y actores
+C 0x4451 limpia la pantalla y coloca el marco y los actores
+L 0x4469 VUELCA_A_VRAM  ex de,hl y salta a LDIRVM
+L 0x446d DESCOMPRIME_GUION  Interprete de guiones comprimidos de pantalla (RLE)
+C 0x446d C=0: escribe en la tabla de nombres
+L 0x446f DESC_BLOQUE
+C 0x446f toma el puntero del bloque siguiente y lo sigue
+L 0x4475 DESC_ABRE
+L 0x4478 DESC_LEE
+C 0x4478 lee la cuenta; 0 cierra el bloque
+L 0x4483 DESC_COPIA
+C 0x4483 racha distinta: vuelca B bytes por el puerto reubicado
+L 0x448e DESC_REPITE
+C 0x448e racha igual: repite el mismo byte B veces
+L 0x4491 DESC_REPITE_4491
+C 0x4491 repite el mismo byte por el puerto B veces
+L 0x449b DESC_FIN
+C 0x449e fin de todos los bloques
+L 0x44a0 DESC_NOMBRES_ABRE
+L 0x44a4 DESC_NOMBRES
+L 0x44a8 DESC_PATRONES_ABRE
+L 0x44ac DESC_PATRONES
+L 0x44b0 DESC_DOBLE  Variante que dibuja dos capas (mascara y patron)
+C 0x44b1 cuenta de la primera capa
+C 0x44be puntero opcional de la primera capa
+L 0x44c1 DESC_DOBLE_2
+C 0x44c1 lee la cuenta de la segunda capa
+C 0x44c5 apunta al mismo origen para las dos capas
+L 0x44d2 DESC_DOBLE_ORIG
+C 0x44d2 guarda el origen comun de las dos
+L 0x44e5 DESC_DOBLE_CAPA1
+C 0x44e5 vuelca la primera capa byte a byte
+C 0x44ec baja el contador de la primera capa
+L 0x4505 DESC_DOBLE_CAPA2
+L 0x4512 DESC_DOBLE_SIGUE
+L 0x4517 FIJA_ESCRITURA  SETWRT y guarda el puerto de datos del VDP en C'
+C 0x4518 abre la VRAM para escribir en (HL)
+C 0x451c lee el puerto de datos del VDP (0x0007) a C'
+L 0x4523 PINTA_TIRA  Vuelca una tira con codigos de control (0x24, 0xFF)
+C 0x4523 sigue un puntero y vuelca la tira
+L 0x4529 PINTA_TIRA_1
+L 0x4531 PINTA_TIRA_FIJA
+L 0x4534 PINTA_TIRA_BUCLE
+C 0x4536 por debajo de 0x24 es un salto de posicion
+C 0x453a 0xFF sigue un puntero
+L 0x4544 PINTA_TIRA_SALTO
+L 0x4549 PINTA_TIRA_AVANZA
+C 0x4549 por debajo de 0x24 mueve la posicion de escritura
+L 0x4552 PINTA_TIRA_PUNTERO
+C 0x4552 0xFF: salta al puntero que sigue
+L 0x455a PINTA_ROTULO  Rutina de rotulos (se copia a 0xE1C0 y corre alli)
+L 0x4562 PINTA_ROTULO_4562
+C 0x4562 0x30 marca fin de tramo; por debajo, es control
+L 0x4565 PROT_SALTO
+C 0x4565 recoloca la posicion de escritura del rotulo
+L 0x456f PROT_ESCRIBE
+C 0x4576 abre la VRAM en la posicion calculada
+L 0x4579 PROT_BYTE
+C 0x4579 saca el caracter por el puerto de datos
+C 0x457c saca el codigo de caracter por el puerto
+L 0x458c PROT_PUNTERO  Sigue el puntero de continuacion del rotulo
+C 0x458c sigue el puntero de continuacion del rotulo
+L 0x4594 INSTALA_ROTULOS  Copia PINTA_ROTULO a 0xE1C0
+C 0x4594 copia la rutina de rotulos a la RAM (0xE1C0)
+L 0x45a6 INSTALA_DESC  Copia el nucleo out(c),a a 0xE310
+L 0x45b1 FIJA_ORIGEN_DESC
+L 0x45b6 CERO_ORIGEN_DESC
+L 0x45b9 CERO_ORIGEN_DESC_45B9
+D 0x45bd 0x45e1 nucleo_desc_reubicado  Nucleo del descompresor que corre en 0xE310
+L 0x45e1 INVIERTE_BITS  Devuelve A con sus 8 bits del reves (para espejar dibujos)
+L 0x45e5 INVIERTE_BITS_45E5
+L 0x45ec VUELCA_GUION  Interprete de guion [destino][cuenta][bytes]... a la VRAM
+C 0x45ec c=0: escribe tal cual
+L 0x45ee GUION_DESTINO
+C 0x45ee toma el destino de VRAM del guion
+L 0x45f2 GUION_BYTE
+C 0x45f2 la cuenta: 0xFF cierra el guion, 0xFE abre otro destino
+L 0x45ff GUION_ESCRIBE
+C 0x4600 saca el byte a la VRAM
+L 0x4607 VUELCA_GUION_INV  Igual pero marca los bytes (c=1)
+L 0x460b RELLENA_3_TERCIOS  Rellena el mismo patron en los tres tercios de pantalla
+L 0x460d RELLENA_3_TERCIOS_460D
+L 0x461c DESC_3_TERCIOS  Descomprime el mismo bloque en los tres tercios
+L 0x461e DESC_3_TERCIOS_461E
+C 0x461e descomprime el mismo bloque en los tres tercios
+L 0x462c LIMPIA_VRAM  Silencia el sonido y borra los 16 KB de VRAM
+L 0x4640 CARGA_REGISTROS_VDP  Escribe los ocho registros del VDP desde la tabla
+L 0x4647 CARGA_REGISTROS_VDP_4647
+D 0x4651 0x4659 tabla_registros_vdp  Los ocho valores de registro del VDP (SCREEN 2)
+F 0x4651 8
+L 0x4659 FIJA_BORDE  WRTVDP registro 7 (color de borde y fondo) = C
+L 0x465e LEE_MANDOS_FLANCO  Lee los mandos y deja en 0xE00A los recien pulsados
+L 0x4664 FLANCO  Deja en 0xE00A las teclas que pasan de sueltas a pulsadas
+C 0x4664 deja en 0xE00A los mandos que acaban de pulsarse
+L 0x466b LEE_MANDOS  Junta joystick (PSG) y teclado (filas 7 y 8) en un byte
+C 0x466b selecciona el puerto de mando en el registro 15 del PSG
+C 0x466d registro 14 del PSG: el joystick
+C 0x4675 lee el registro 14 del PSG (el estado del joystick)
+C 0x467d fila 7 del teclado (flechas)
+C 0x467f fila 7 del teclado
+C 0x4683 deja el bit de arriba/abajo
+C 0x4687 fila 8 del teclado (espacio)
+C 0x4689 fila 8 del teclado
+C 0x468d separa disparo y direccion
+C 0x469d y el ultimo bit de direccion
+C 0x46a1 mezcla joystick y teclado en el mismo byte
+C 0x46a2 junta joystick y teclado
+L 0x46a4 MANDOS_REPOSO  Fuera de partida: START empieza, o entra en demo
+C 0x46a7 flanco del disparo/START (0xE051)
+C 0x46bd START pulsado: prepara la pantalla de carrera
+L 0x46c0 REPOSO_DEMO
+C 0x46c7 si no, marca demo (bit6 de 0xE002) y salta al estado 3
+L 0x46d0 PREPARA_SCROLL  Arranca el puntero (0xE00D/0xE00E) del rotulo que baja
+L 0x46dc BAJA_ROTULO  Sube el puntero de VRAM una fila y pinta tres tiras
+C 0x46df resta 0x20 (una fila de la tabla de nombres)
+L 0x4700 ESCRIBE_INCR  Escribe B caracteres correlativos y avanza una fila
+L 0x4701 ESCRIBE_INCR_4701
+L 0x470e INICIA_CARRERA  Fija las variables del coche y prepara la etapa
+C 0x470e marca la carrera como no acabada
+C 0x4720 arranca los contadores de tramo
+C 0x472a puntero de la pista en curso (0xE07E)
+C 0x472d apunta al guion de la pista
+C 0x4736 arranca las melodias de la etapa
+C 0x473f a partir de la etapa 0x0A cambia el paso del marcador
+L 0x474b INICIA_CARRERA_474B
+C 0x474b sobre la etapa 10 acorta el marcador
+C 0x4751 indexa la tabla de anchos de marcador por la etapa
+C 0x475e coloca coche, salpicadero y decorado
+C 0x476a dibuja el fondo y los tiles de la etapa
+L 0x478b INICIA_CARRERA_478B
+L 0x4791 ACTUALIZA_CARRERA  Un cuadro del motor: direccion, fisica y actores
+C 0x4791 encadena direccion, fisica y actores del cuadro
+C 0x4797 elige donde aparece el proximo rival
+L 0x47b2 DIBUJA_CARRERA  La tuberia de dibujado del cuadro de carrera
+C 0x47b2 encadena las rutinas de dibujado del cuadro
+L 0x47cd ACTUALIZA_SI_JUEGA  Solo con partida en marcha (0xE085)
+L 0x47d5 ACTUALIZA_COCHE
+L 0x47dd AVANZA_ANIMACION  Cada 0xE072 cuadros pasa al siguiente fotograma
+C 0x47dd cada 0xE072 cuadros pasa al fotograma siguiente
+C 0x47e1 si aun no toca, se va
+L 0x47f6 ACTUALIZA_Y_MIRA_META
+C 0x4804 si el avance (0xE07C) llega a 0x1A, marca meta (0xE062)
+L 0x480d ACT_META_2
+L 0x4813 DESPACHA_FONDO_ETAPA  Dibuja el fondo segun la etapa (0xE060), via tabla
+C 0x4816 indexa desde 1
+D 0x481a 0x4834 tabla_fondos_etapa  Rutina de fondo por etapa (indexada por 0xE060)
+F 0x481a w13
+L 0x4834 DIBUJA_TILES_ETAPA  Pone los tiles de cielo y suelo segun la etapa
+C 0x4834 rellena cielo y suelo en los tres tercios
+C 0x4837 indexa la tabla de tiles por la etapa
+C 0x483b indexa la tabla 0x485C por la etapa
+C 0x483e el primero es el tile del cielo
+C 0x4842 lo pone en la banda alta de la pantalla
+C 0x4854 y el resto en la banda del suelo
+D 0x485e 0x4878 tabla_tiles_etapa  Pares [cielo][suelo] de tiles por etapa (indexada por 0xE060)
+F 0x485e 2
+L 0x4878 DIBUJA_PANEL_JUEGO  Vuelca el guion del salpicadero; si toca, uno extra
+C 0x4881 el bit 0/3 de 0xE061 pide el adorno de 0x4BA7
+D 0x488a 0x4c2a guiones_panel  Guiones comprimidos del salpicadero y la pista
+D 0x4c2a 0x4d8e guiones_rotulos  Guiones de los rotulos de texto de las pantallas
+L 0x4d8e DIBUJA_MARCO  Carga la fuente y el marco de la pantalla de carrera
+C 0x4d8e descomprime la fuente en la tabla de patrones (0x2000)
+C 0x4d97 vuelca el guion comun del marco
+C 0x4da1 rellena 16 bloques de la tabla de color
+L 0x4da3 MARCO_COLOR
+C 0x4da3 rellena 16 bloques de la tabla de color
+C 0x4da5 rellena de ocho en ocho bytes
+L 0x4db6 TINTA_FRANJA  Rellena una franja de color y baja un tono
+L 0x4dcc DIBUJA_PODIO  Rutina de dibujo sin referencia estatica (posible resto)
+C 0x4dcc dibuja 19 filas de 16 bytes desde 0x518E
+L 0x4dd7 PODIO_FILA
+C 0x4dd7 dibuja 19 filas de 16 bytes desde 0x518E
+D 0x4dea 0x518e fuente_y_graficos  Fuente de 8x8 y graficos comunes de la carrera
+D 0x518e 0x51b8 guion_marco  Guion comun del marco de la pantalla de carrera
+L 0x51b8 FONDO_ETAPA_1  Dibuja el fondo de la primera familia de etapas
+C 0x51bb dibuja las dos capas (patron y color)
+C 0x51d4 anade el guion del suelo
+C 0x51df en un tipo de etapa suma un adorno
+L 0x51e9 FONDO_ETAPA_1_51E9
+C 0x51ef vuelca los patrones de la pista
+D 0x51f8 0x586c graficos_fondo_1  Graficos comprimidos del fondo (patron, color, mapa)
+L 0x586c FONDO_ETAPA_2  Fondo base mas capas de decorado (arboles, vallas)
+C 0x586c reusa el fondo base y le suma capas de decorado
+C 0x586f fija el origen comun de las dos capas
+C 0x5875 dibuja la capa de decorado
+C 0x587b y la de arboles/vallas
+C 0x5887 abre la VRAM en otra fila
+L 0x589c FONDO_ETAPA_2_589C
+D 0x58a5 0x5a44 graficos_fondo_2  Graficos comprimidos del fondo de tipo 2
+L 0x5a44 FONDO_ETAPA_3  Fondo base con una franja rellena y su decorado
+L 0x5a58 FONDO_ETAPA_3_5A58
+D 0x5a5e 0x5b22 graficos_fondo_3  Graficos comprimidos del fondo de tipo 3
+L 0x5b22 FONDO_ETAPA_4  Reusa el 3 y le anade un guion mas
+D 0x5b2b 0x5b68 graficos_fondo_4  Graficos comprimidos del fondo de tipo 4
+L 0x5b68 FONDO_ETAPA_5  Fondo con decorado propio y una franja repetida
+C 0x5b68 dibuja el fondo con su decorado y una franja repetida
+C 0x5b6e vuelca ademas un guion de decorado
+L 0x5b8b RELLENA_FRANJA_2  Rellena dos tercios desde 0x0798
+D 0x5b96 0x5d5b graficos_fondo_5  Graficos comprimidos del fondo de tipo 5
+L 0x5d5b FONDO_ETAPA_6  Fondo base mas un guion corto
+C 0x5d5b reusa el fondo base y le anade un guion corto
+D 0x5d6d 0x5d86 graficos_fondo_6  Graficos comprimidos del fondo de tipo 6
+L 0x5d86 FONDO_ETAPA_7  Fondo base con tres capas de decorado
+C 0x5d86 reusa el fondo base con tres capas de decorado
+C 0x5d8c descomprime la primera capa del fondo
+D 0x5dab 0x5e94 graficos_fondo_7  Graficos comprimidos del fondo de tipo 7
+L 0x5e94 FONDO_ETAPA_8  Reusa el 5 y le anade una capa
+D 0x5ea2 0x5ed9 graficos_fondo_8  Graficos comprimidos del fondo de tipo 8
+L 0x5ed9 ARRANCA_SONIDO  Arranca la melodia o efecto A (con di/ei alrededor)
+C 0x5ed9 arranca la melodia o efecto A entre di y ei
+C 0x5edb protege los registros durante el arranque
+L 0x5ee7 ARRANCA_SONIDO_INT  Comprueba prioridad y prepara el canal desde la tabla
+C 0x5ee7 comprueba la prioridad y prepara el canal
+C 0x5eed segun el numero elige el canal y su prioridad
+L 0x5eff ARRANCA_SONIDO_INT_5EFF
+L 0x5f05 SON_PRIO_2
+L 0x5f0f SON_COMPARA
+C 0x5f0f no pisa un sonido de mas prioridad que suena
+C 0x5f16 no pisa un sonido de mas prioridad que suena
+C 0x5f1c toma el puntero de la melodia de la tabla 0x61C5
+L 0x5f3a SON_COMPARA_5F3A
+C 0x5f3a arranca la ficha del canal en 0xE03B
+C 0x5f3c copia el puntero de la melodia a la ficha del canal
+C 0x5f3f avanza al puntero de datos de la melodia
+C 0x5f42 apunta al primer byte de la melodia
+C 0x5f4a arranca la cabecera del canal
+L 0x5f61 SON_COMPARA_5F61
+L 0x5f67 SONIDO_CTRL  Orden de control dentro de la melodia (0xFE)
+C 0x5f67 orden de control de la melodia (fin o repeticion)
+L 0x5f73 SONIDO_CTRL_5F73
+C 0x5f73 lee el nuevo puntero de la melodia
+L 0x5f82 SONIDO_CTRL_5F82
+L 0x5f8b SONIDO_CTRL_5F8B
+L 0x5f91 PSG_TONO  Escribe el tono en el par de registros del PSG
+C 0x5f91 escribe el tono en el par de registros del PSG
+L 0x5f9b PSG_TONO_5F9B
+C 0x5f9b ajusta el bit del canal en el mezclador
+L 0x5fa5 PSG_TONO_5FA5
+L 0x5fa6 PSG_TONO_5FA6
+C 0x5fa6 fuerza el bit del canal segun el ruido
+L 0x5fae FIJA_MEZCLADOR  Ajusta el registro 7 del PSG (mezclador) desde 0xE03A
+L 0x5fb7 ACTUALIZA_SONIDO  Un cuadro del reproductor: recorre los tres canales
+C 0x5fb7 refresca el mezclador
+C 0x5fbf ficha del primer canal (0xE010), 14 bytes cada una
+C 0x5fc4 tres canales
+L 0x5fc9 ACTUALIZA_SONIDO_5FC9
+C 0x5fc9 recorre los tres canales del reproductor
+L 0x5fdb ACTUALIZA_SONIDO_5FDB
+L 0x5fde ACTUALIZA_SONIDO_5FDE
+C 0x5fe1 pasa a la ficha del canal siguiente
+L 0x5fe6 CANAL_ARPEGIO  Canal en modo especial (efecto de barrido)
+C 0x5fe6 canal en modo barrido (efecto)
+C 0x5fed segun el bit, escribe o borra el barrido
+C 0x5fef salta a escribir el barrido en el PSG
+L 0x6016 CANAL_ARPEGIO_6016
+L 0x601e CANAL_ARPEGIO_601E
+L 0x6022 GUARDA_BARRIDO
+C 0x6022 guarda el paso del barrido
+L 0x602e ESCRIBE_BARRIDO
+C 0x602e escribe el tono del barrido en el PSG
+L 0x604b ACTUALIZA_CANAL  Avanza un canal: nota, duracion y volumen
+L 0x6052 ACTUALIZA_CANAL_6052
+C 0x6059 baja el contador de duracion; si no llega a 0, se queda
+L 0x605d CANAL_LEE_NOTA
+C 0x605d lee la siguiente nota de la melodia
+C 0x6064 0xFE cierra o repite la melodia
+L 0x6080 CANAL_NOTA
+C 0x6080 descompone el byte de nota en tono y duracion
+C 0x6083 0x1x en el nibble alto: cambia el tono base
+L 0x609a CANAL_NOTA_609A
+L 0x609d CANAL_ESCRIBE_VOL
+L 0x60a8 CANAL_TONO
+C 0x60a8 saca el tono calculado por el PSG
+L 0x60ba CANAL_TONO_60BA
+C 0x60ba mezcla el nibble de duracion
+C 0x60bd combina el tono con el desplazamiento
+L 0x60cd CANAL_FIJA_DUR
+C 0x60cd fija la duracion de la nota en la ficha
+L 0x60dd CANAL_SILENCIO  Apaga el canal
+C 0x60dd apaga el canal (silencio)
+C 0x60e2 pone a cero el modo del canal
+C 0x60e3 y su contador de repeticion
+L 0x610f CANAL_ESPECIAL
+C 0x610f orden especial dentro de la melodia
+C 0x6115 baja el contador del efecto especial
+L 0x6129 CANAL_ESPECIAL_6129
+L 0x612c CANAL_ESPECIAL_612C
+L 0x6135 CANAL_ESPECIAL_6135
+L 0x613d CANAL_ORDEN
+C 0x613d interpreta una orden de control del canal
+L 0x614c CANAL_ORDEN_614C
+C 0x614c orden: cambia de tempo o de instrumento
+C 0x6150 el nibble bajo dice el parametro
+L 0x6161 CANAL_ORDEN_6161
+C 0x6161 orden: fija un parametro del canal
+L 0x616c CANAL_ORDEN_616C
+L 0x6174 CANAL_ORDEN_6174
+L 0x6179 CANAL_ORDEN_6179
+C 0x6179 orden: salta a otro punto de la melodia
+C 0x617d recalcula el tono de la orden
+L 0x618e CANAL_ORDEN_618E
+C 0x618e orden: repite un tramo de la melodia
+C 0x6194 aplica la repeticion del tramo
+L 0x61a5 CANAL_ORDEN_61A5
+L 0x61a8 PSG_ESCRIBE_TONO  Saca el par de bytes de tono por el PSG
+L 0x61b3 PSG_CALCULA_TONO  Interpola el tono a partir de la nota
+D 0x61bb 0x61c5 tabla_arranque_sonido  Cabecera del bloque de sonido
+D 0x61c5 0x65b1 datos_musica  Tabla de melodias (0x61C5) y las melodias/efectos
+F 0x61c5 w
+L 0x65b1 MUEVE_COCHE_X  Desliza el coche del jugador en horizontal y coloca sus sprites
+C 0x65b1 desliza el coche en horizontal segun el volante
+C 0x65b7 sin partida no hace nada
+C 0x65bc puntero al estado horizontal del coche (0xE080)
+C 0x65c1 acumula el empuje lateral
+C 0x65c7 el derrape depende del tipo de etapa (bit1 de 0xE061)
+C 0x65d3 baja el contador del derrape
+L 0x65d9 COCHE_DERRAPE
+L 0x65e3 COCHE_X_1
+L 0x65e4 COCHE_X_2
+C 0x65e7 mira si el coche va a izquierda o derecha
+L 0x65ee COCHE_X_IZQ
+L 0x65f0 COCHE_LIMITE_IZQ
+L 0x65f5 COCHE_X_DER
+L 0x65f7 COCHE_LIMITE_DER
+L 0x65fa COLOCA_SPRITES_COCHE  Escribe la X en los seis sprites del coche
+C 0x65fa recoloca los sprites que forman el coche (0xE121..)
+L 0x6614 tabla_derrape_base  Base de la tabla de derrape (se lee desde 0x6615)
+D 0x6615 0x661f tabla_derrape  Curva de derrape lateral del coche
+F 0x6615 10
+L 0x661f MUEVE_COCHE_Y  Ajusta la posicion vertical/altura del coche
+C 0x661f ajusta la altura del coche en los saltos
+C 0x6623 pasa a la coordenada de altura
+L 0x663e CORTA_DERRAPE  Anula el derrape (0xE08C)
+L 0x6643 LEE_VOLANTE  Toma la direccion del volante de los mandos (0xE009)
+C 0x6643 toma la direccion del volante de los mandos
+L 0x6650 VOLANTE_GUARDA
+C 0x6650 guarda la direccion pedida (0xE082)
+L 0x665f VOLANTE_FIJA
+L 0x6661 VOLANTE_SUAVE
+C 0x6661 en ciertas etapas suaviza el giro
+L 0x666e ANIMA_RUEDAS  Alterna el fotograma de las ruedas segun la velocidad
+C 0x666e alterna el fotograma de las ruedas por la velocidad
+L 0x6682 RUEDAS_FIJA
+L 0x6689 MIRA_CHOQUE_LATERAL  Si el coche se sale, marca golpe y suena
+C 0x6689 si el coche se sale del borde, marca golpe
+C 0x668e mira la X del primer sprite del coche (0xE121)
+L 0x66a2 CHOQUE_SACUDE
+C 0x66a2 sacude el coche y hace sonar el golpe
+C 0x66a7 baja el contador de la sacudida
+L 0x66bc INSTALA_SPRITES_COCHE  Copia la plantilla del coche a 0xE120 y a la VRAM
+C 0x66c7 en ciertas etapas cambia el color de dos sprites
+L 0x66d6 VUELCA_SPRITES_COCHE  Manda los seis sprites del coche a 0x3B10
+D 0x66e2 0x66fa plantilla_sprites_coche  Seis sprites (Y,X,patron,color) del coche
+F 0x66e2 4
+L 0x66fa AJUSTA_ALTURA_COCHE  Corrige la altura del coche segun la fase
+C 0x66fa corrige la altura del coche segun la fase de salto
+C 0x66fe si no hay salto en curso, se va
+L 0x670e AJUSTA_ALTURA_1
+C 0x670e ajusta la altura de la rampa
+L 0x6719 AJUSTA_ALTURA_1_6719
+C 0x6719 baja la altura del coche paso a paso
+L 0x6728 AJUSTA_ALTURA_1_6728
+C 0x6728 sube la altura del coche paso a paso
+L 0x6737 AJUSTA_ALTURA_1_6737
+C 0x6737 fija la altura final tras el salto
+L 0x674c AJUSTA_ALTURA_1_674C
+D 0x6757 0x676b tabla_saltos_coche  Alturas del coche en el salto (rampa)
+F 0x6757 2
+L 0x676b AVANZA_CARRERA  Reloj de carrera: distancia, puntos, meta y proxima fase
+C 0x6773 el reloj de tramo (0xE072) marca el paso
+C 0x678b sin acelerar a fondo puntua poco a poco
+L 0x678f AVANZA_TRAMO
+C 0x678f avanza un tramo del recorrido
+C 0x6797 al agotar el tramo, avanza el recorrido
+C 0x67a4 al agotar el tramo marca fin (0xE062)
+L 0x67a7 AVANZA_TRAMO_1
+C 0x67a7 al cerrar el tramo, prepara la meta
+L 0x67b2 AVANZA_TRAMO_2
+C 0x67b2 cada 32 pasos actualiza el marcador
+L 0x67bb AVANZA_TRAMO_3
+L 0x67bc AVANZA_TRAMO_4
+C 0x67bc ajusta el contador de tramo
+L 0x67c8 AVANZA_REVISA_COLISION
+C 0x67c8 revisa si toca redibujar por colision
+C 0x67cc compara el segmento con el esperado (0xE073)
+L 0x67e2 AVANZA_DIBUJA
+C 0x67e2 dibuja coche y decorado
+C 0x67e8 pinta los bordes de la carretera
+C 0x67ee compara el tramo con el esperado
+L 0x6803 AVANZA_FIN
+L 0x6808 LEE_PISTA  Lee el guion de la pista (0xE07A) para el siguiente tramo
+L 0x6810 LEE_PISTA_TRAMO
+C 0x6810 saca el byte de curva/segmento del guion de pista
+C 0x6813 saca el byte de curva del guion de pista
+L 0x6829 PISTA_GUARDA
+C 0x6829 guarda el segmento de pista leido
+L 0x6838 PISTA_CURVA
+C 0x6838 calcula la curvatura del segmento
+C 0x683b guarda la curvatura calculada
+L 0x6845 PISTA_AVANZA
+C 0x6845 avanza al siguiente segmento de pista
+C 0x6849 lee el estado del segmento de pista
+L 0x685b PISTA_AVANZA_1
+L 0x6861 DIBUJA_CUENTAKM  Pinta el cuentakilometros/rotulo lateral por tablas
+C 0x6861 pinta el cuentakilometros por tablas
+C 0x6866 la etapa acuatica usa otra variante
+L 0x687d DIBUJA_CUENTAKM_687D
+L 0x6888 CUENTAKM_INDEXA
+C 0x6888 indexa la tabla de digitos del cuentakilometros
+C 0x688a suma el indice a la base de la tabla
+L 0x68a2 DIBUJA_CUENTAKM_ACUA  Variante para la etapa acuatica
+C 0x68a2 variante del cuentakilometros para la etapa acuatica
+C 0x68a6 apunta a las tablas de la variante acuatica
+L 0x68be SIGUE_CUENTAKM  Continuacion tras pintar (retorno empujado)
+C 0x68be continua el dibujo tras pintar el rotulo
+L 0x68c7 SIGUE_CUENTAKM_ACUA  Continuacion de la variante acuatica
+C 0x68c7 continua el dibujo de la variante acuatica
+L 0x68d0 DIBUJA_CARRETERA  Dibuja el trazado de la carretera segun la curvatura 0xE074
+C 0x68d6 0xE074 es la curvatura de la carretera
+C 0x68e2 indexa la tabla de formas 0x767C
+C 0x68e6 saca el puntero de la forma
+L 0x68ec DIBUJA_BORDES  Pinta los bordes/rayas de la carretera
+L 0x68f5 DIBUJA_BORDES_1
+C 0x68f5 dibuja el borde con otra tabla
+L 0x68f9 INIT_68F9
+L 0x6905 BORDES_INDEXA
+C 0x6905 mete la curvatura en el indice de bordes
+C 0x6908 el nibble bajo elige el trozo de borde
+C 0x690d pinta la primera mitad del borde
+C 0x6917 y la segunda si existe
+L 0x6922 BORDES_PINTA
+L 0x6927 BORDES_PINTA_2
+L 0x692a VELOCIDAD_A_INDICE  Convierte la velocidad (0xE085) en un valor de tabla
+D 0x6934 0x6937 fragmento_suelto  Tres bytes (ld a,(0xE085)) sin alcanzar
+L 0x6937 GIRO_A_INDICE  Convierte el giro en un indice 0..7
+C 0x6937 convierte el giro en un indice de 0 a 7
+L 0x6940 CONTROL_ACELERADOR  Lee acelerador y freno y ajusta la velocidad
+C 0x6940 lee acelerador y freno y ajusta la velocidad
+L 0x6957 ACELERA  Sube la velocidad 0xE085 hasta su tope
+C 0x6957 sube 0xE085 con el tope de la ficha del canal
+C 0x6961 el tope depende de la marcha (0xE086)
+L 0x696b ACELERA_696B
+C 0x696b acelera con el tope del cambio de marcha
+C 0x696d apunta al tope del cambio de marcha
+C 0x696e baja el contador entre subidas
+L 0x697b DECELERA_ROCE  Frena poco a poco por el roce
+C 0x697b frena poco a poco por el roce del suelo
+L 0x6985 FRENA_2
+L 0x6987 FRENA  Resta C a la velocidad, con suelo en cero
+C 0x6987 resta C a la velocidad, con suelo en cero
+L 0x6990 FRENA_6990
+L 0x6992 LEE_REVOLUCIONES  Devuelve el nivel de revoluciones para el sonido
+C 0x6992 devuelve el nivel de revoluciones para el ruido del motor
+C 0x6998 el nivel sale de la velocidad actual
+L 0x69ac REV_INDEXA
+D 0x69b1 0x69c6 tabla_revoluciones  Nivel de motor por tramo de velocidad
+F 0x69b1 11
+L 0x69c6 ACELERA_A_FONDO  Acelerador a tope: sube velocidad y ruge el motor
+C 0x69c6 acelera a fondo y hace rugir el motor
+C 0x69ca sin velocidad no acelera
+L 0x69df ACELERA_SONIDO
+L 0x69e4 DIBUJA_VELOCIMETRO_2
+L 0x69e7 DIBUJA_VELOCIMETRO  Escribe la cifra de velocidad (km/h) en la VRAM
+C 0x69f0 indexa las centenas por la velocidad
+C 0x69fc y las unidades
+C 0x6a03 suma con ajuste decimal
+L 0x6a08 DIBUJA_VELOCIMETRO_6A08
+C 0x6a0e parte el numero en dos digitos
+D 0x6a19 0x6a39 tabla_velocimetro  Centenas de km/h por tramo de velocidad (BCD)
+F 0x6a19 2
+D 0x6a39 0x6a49 tabla_velocimetro_uni  Unidades de km/h por tramo de velocidad
+F 0x6a39 16
+L 0x6a49 GASTA_GASOLINA  Baja el nivel de gasolina y pinta su aguja
+C 0x6a49 gasta gasolina y mueve su aguja
+C 0x6a4f lee el nivel de gasolina
+L 0x6a5f GASOLINA_BAJA
+L 0x6a66 GASOLINA_1
+L 0x6a6e GASOLINA_AGUJA
+C 0x6a6e coloca la aguja de la gasolina en su angulo
+C 0x6a72 aisla el angulo de la aguja
+L 0x6a80 GASOLINA_PINTA
+L 0x6a8f GASOLINA_PINTA_2
+L 0x6a95 INSTALA_GASOLINA  Coloca los sprites de la aguja de gasolina
+D 0x6aa1 0x6aa9 sprites_gasolina  Dos sprites de la aguja de gasolina
+F 0x6aa1 4
+L 0x6aa9 AVISA_GASOLINA  Cuando queda poca, parpadea y suena el aviso
+C 0x6aa9 con poca gasolina, parpadea y avisa
+L 0x6ab9 AVISA_GASOLINA_1
+C 0x6ab9 marca el ritmo del parpadeo de aviso
+C 0x6abd el patron de bits marca el ritmo del parpadeo
+L 0x6acf CAMBIA_MARCHA  Sube o baja de marcha (0xE086) segun la velocidad
+C 0x6acf sube o baja de marcha segun la velocidad
+C 0x6ad3 compara con el umbral de la marcha
+L 0x6ae7 MARCHA_BAJA
+L 0x6aec MARCHA_PINTA
+C 0x6aec pinta el indicador de la marcha
+L 0x6afb MARCHA_ESCRIBE
+L 0x6afe INSTALA_MARCHA  Coloca los sprites del indicador de marcha
+D 0x6b0a 0x6b0e sprites_marcha  Sprite del indicador de marcha
+F 0x6b0a 4
+L 0x6b0e AVANZA_RELOJ  Sube el reloj de tiempo (0xE068) en BCD
+C 0x6b0e sube el reloj de tiempo en BCD
+C 0x6b13 solo sube cada 16 cuadros
+C 0x6b17 suma uno en BCD al reloj
+C 0x6b1c al llegar a 0x60 (un minuto) reinicia
+L 0x6b28 RELOJ_PINTA
+L 0x6b32 RELOJ_PINTA_6B32
+L 0x6b37 RELOJ_PINTA_6B37
+D 0x6b5a 0x6b5e tabla_reloj  Cabecera del rotulo del reloj
+F 0x6b5a 4
+L 0x6b5e ALGO_6B5E  Rutina auxiliar de dibujo del panel
+C 0x6b5e dibuja una parte del panel
+D 0x6b79 0x6b7d tabla_panel  Cabecera de un rotulo del panel
+F 0x6b79 4
+L 0x6b7d COLOCA_RIVALES_VRAM  Escribe en la VRAM las X/Y de los tres rivales
+C 0x6b7d escribe la posicion de los tres rivales en la VRAM
+L 0x6b96 COLOCA_RIVALES_VRAM_6B96
+C 0x6b96 recorre las fichas de los rivales
+C 0x6b98 avanza a la ficha del rival siguiente
+L 0x6ba6 COLOCA_RIVALES_VRAM_6BA6
+L 0x6bab RIVALES_1
+C 0x6bab coloca un rival en su casilla de la VRAM
+L 0x6bb5 RIVALES_1_6BB5
+C 0x6bb5 avanza a la ficha del rival siguiente
+L 0x6bc0 RIVALES_2
+C 0x6bc0 segunda pasada de colocacion de rivales
+L 0x6bc9 RIVALES_2_6BC9
+L 0x6bcf RIVALES_2_6BCF
+C 0x6bcf ajusta la casilla del rival
+C 0x6bd5 recalcula la casilla del rival
+L 0x6bea RIVALES_2_6BEA
+C 0x6bea cierra la colocacion del rival
+L 0x6bfb ARRANCA_CRONO  Prepara el bloque del cronometro/resultado
+L 0x6c07 ARRANCA_CRONO_6C07
+C 0x6c07 copia un tramo del guion del cronometro
+L 0x6c15 ARRANCA_CRONO_6C15
+L 0x6c19 ARRANCA_CRONO_6C19
+C 0x6c19 arranca el bloque del cronometro
+C 0x6c1f suma el indice a la base del guion
+L 0x6c2d tabla_perspectiva_base
+D 0x6c2e 0x6c3b tabla_crono  Punteros del rotulo del cronometro
+F 0x6c2e w
+L 0x6c3b APARECEN_OBJETOS  Coloca los objetos y rivales del tramo por perspectiva
+C 0x6c3b coloca los objetos del tramo escalados por la distancia
+C 0x6c3f solo hay sitio para siete objetos a la vez
+C 0x6c41 si estan todos, no anade mas
+C 0x6c42 indexa las tablas de escalado por la posicion (0xE07C)
+C 0x6c45 lee la posicion del tramo (0xE07C)
+C 0x6c4d solo aparece si el tramo coincide (0xE073)
+C 0x6c53 marca el objeto como colocado
+C 0x6c5d dobla el indice para la tabla de posiciones (0x6D09)
+C 0x6c6b 0xE0 es una casilla vacia
+C 0x6c6f los dos bits altos dan el ancho del objeto (1..3 sprites)
+C 0x6c77 el resto es el patron base
+C 0x6c7d segun el tipo, elige el color del objeto
+L 0x6c89 OBJETO_ESCALA
+C 0x6c89 escala el objeto segun su profundidad
+C 0x6c8b guarda la Y escalada del objeto
+L 0x6c9e OBJETO_COLOCA
+C 0x6c9e reparte las cuatro casillas del objeto
+L 0x6ca8 OBJETO_BUCLE
+C 0x6ca8 escribe los cuatro sprites del objeto
+C 0x6cab retrocede en la ficha del sprite
+L 0x6cb6 OBJETO_ESCRIBE
+C 0x6cba manda los cuatro sprites del objeto a 0x3B58
+L 0x6cc3 OBJETOS_FIN
+L 0x6cc9 LEE_GUION_PISTA  Descomprime el siguiente trozo del guion de la pista
+D 0x6cd5 0x6d74 tablas_perspectiva  Escalado por profundidad y patrones de los objetos
+L 0x6d74 DIBUJA_HORIZONTE  Pinta la franja de horizonte segun el tipo de etapa
+C 0x6d74 pinta la franja del horizonte segun el tipo de etapa
+C 0x6d7a el tipo de etapa (0xE061) elige el horizonte
+L 0x6d98 HORIZONTE_1
+L 0x6da1 HORIZONTE_RELLENA
+L 0x6da9 HORIZONTE_ETAPA12
+D 0x6dc5 0x6e22 tiras_horizonte  Tiras del horizonte y los rotulos laterales
+L 0x6e22 DIBUJA_ESCENARIO  Pinta el decorado lateral animado (0xE075)
+C 0x6e22 pinta el decorado lateral animado
+L 0x6e33 ESCENARIO_INDEXA
+C 0x6e33 indexa el guion del decorado por la fase
+C 0x6e38 suma la fase de animacion al puntero
+L 0x6e45 ESCENARIO_1
+L 0x6e4d ESCENARIO_2
+D 0x6e55 0x707a escenario_lateral  Guiones del decorado lateral por tipo de etapa
+L 0x707a SCROLL_CARRETERA  Desplaza las rayas de la carretera hacia el jugador
+C 0x707a desplaza las rayas de la carretera hacia el jugador
+C 0x707f la etapa acuatica va por otro camino
+C 0x7084 con la fase 8 (parado) no scrollea
+C 0x708d baja el contador del scroll
+L 0x709b SCROLL_CARRETERA_709B
+C 0x709b la velocidad decide cuanto se desplazan
+C 0x709f sin velocidad no desplaza
+L 0x70b3 SCROLL_1
+C 0x70b3 guarda el patron desplazado
+L 0x70bf SCROLL_2
+C 0x70bf rota el buffer de la carretera
+C 0x70c6 rota el buffer de la carretera hacia un lado
+L 0x70d2 SCROLL_3
+L 0x70dc SCROLL_VUELCA
+L 0x70e8 CARGA_CARRETERA  Copia el patron de carretera de la etapa a 0xE180
+C 0x70e8 copia el patron de carretera de la etapa
+C 0x70ec fuera de las etapas con rayas, se va
+L 0x70ff CARGA_CARRETERA_BUCLE
+C 0x70ff traduce cada nibble a un caracter de la VRAM
+L 0x710e CARGA_CARRETERA_1
+C 0x710e y el segundo nibble de cada byte
+L 0x7118 CARGA_CARRETERA_1_7118
+D 0x711e 0x71ac patrones_carretera  Punteros y patrones de carretera por etapa
+F 0x711e w
+L 0x71ac SCROLL_ACUATICO  Anima la superficie de la etapa acuatica (0xE061=8)
+C 0x71ac anima la superficie de la etapa acuatica
+C 0x71af solo en la etapa acuatica
+C 0x71b1 solo en la etapa acuatica (0xE061=8)
+C 0x71b2 el paso depende de la fase 0xE075
+C 0x71b8 baja el contador del oleaje
+C 0x71bd indexa la tabla de fotogramas de la ola
+C 0x71c3 sin velocidad, el agua no se mueve
+C 0x71c5 la velocidad marca cuanto avanza la ola
+C 0x71ce guarda el fotograma en la ficha
+C 0x71d5 el bit 2 de la fase alterna el sentido
+L 0x71db ACUATICO_1
+C 0x71db cierra el ciclo de la animacion acuatica
+L 0x71ee ACUATICO_BUCLE
+C 0x71ee recorre los sprites de la ola
+L 0x71f8 ACUATICO_BUCLE_71F8
+C 0x71f8 escribe la ola desplazada
+L 0x71ff ESCRIBE_ACUATICO
+L 0x7204 ESCRIBE_SPRITES_16
+L 0x7209 ESCRIBE_SPRITES_BUCLE
+D 0x7215 0x721d tabla_acuatico  Patrones de la animacion acuatica
+F 0x7215 8
+L 0x721d INSTALA_ACUATICO  Copia la tabla de sprites acuaticos a 0xE0AE
+D 0x7229 0x724b punteros_sprites_rival  Punteros de patron de los rivales/objetos
+F 0x7229 w
+L 0x724b FUEGOS_META  Fuegos artificiales al llegar a meta (0xE061=0x10)
+C 0x724b fuegos artificiales al llegar a meta
+C 0x7250 espera a que pase el aviso de meta
+C 0x7251 contador de la secuencia de meta (0xE0A9)
+L 0x7283 FUEGOS_1
+L 0x7289 FUEGOS_2
+L 0x728e FUEGOS_COLOR
+C 0x728e da un color aleatorio a los fuegos
+L 0x729b FUEGOS_3
+L 0x72a5 GIRA_ROTULO_META  Rota los rotulos que se muestran en la meta
+C 0x72a5 rota el rotulo que se ensena en la meta
+C 0x72a7 baja el contador del giro de rotulo
+C 0x72a8 rearma el contador a ocho
+D 0x72d2 0x731d guiones_meta  Punteros y guiones de los rotulos de la meta
+L 0x731d DIBUJA_EYECATCH  Compone una imagen simetrica espejando cada fila
+C 0x731d compone la imagen espejando cada fila
+C 0x7323 lee el byte de la fila a espejar
+C 0x7339 vuelca la mitad izquierda
+C 0x7340 y la derecha, espejada
+L 0x7345 EYECATCH_BUCLE
+C 0x7346 espeja la fila con INVIERTE_BITS para la mitad derecha
+D 0x7351 0x767c tablas_carretera  Datos del eyecatch y tablas de forma de la carretera
+D 0x767c 0x796c graficos_carretera  Formas de carretera, bordes y patrones de sprite
+L 0x796c AGITA_RIVALES  Da un empujon aleatorio a los rivales y los actualiza
+L 0x7974 ACTUALIZA_RIVALES  Mueve y dibuja los tres coches rivales; mira choques
+C 0x7974 mueve y dibuja los tres coches rivales
+C 0x797b ficha de sprite del primer rival (0xE138)
+C 0x797f actualiza el primer rival
+C 0x7985 el segundo
+C 0x798f y el tercero
+C 0x799b recoloca los sprites tras el barrido
+L 0x79a9 ACTUALIZA_RIVALES_79A9
+C 0x79a9 elige el color aleatorio del proximo rival
+L 0x79bb ACTUALIZA_RIVALES_79BB
+C 0x79c8 desactiva la aceleracion tras un choque (0x6957 = ret)
+L 0x79cc ACTUALIZA_RIVAL  Un rival: avanza, escala por profundidad y colisiona
+C 0x79cc avanza un rival, lo escala y mira el choque
+L 0x79d8 RIVAL_ESCALA
+C 0x79d8 escala el rival por su profundidad
+L 0x79e6 RIVAL_1
+C 0x79e6 coloca el rival en su banda de la pista
+L 0x79f7 RIVAL_2
+L 0x7a00 RIVAL_COLISION
+C 0x7a00 comprueba el choque contra el rival
+C 0x7a02 lee la banda del rival
+C 0x7a03 y su patron
+L 0x7a26 RIVAL_3
+L 0x7a2a RIVAL_4
+C 0x7a2a prepara el sprite del rival cercano
+C 0x7a2e indexa la tabla de sombras del rival
+C 0x7a31 por la fase de animacion 0xE075
+C 0x7a34 dobla el indice de la tabla de sombras
+C 0x7a3f lee el desplazamiento de la fila
+C 0x7a4a triplica el indice (tres bytes por entrada)
+C 0x7a4f apunta a la tabla de dibujos del rival (0x7DBA)
+L 0x7a59 RIVAL_4_7A59
+L 0x7a61 RIVAL_4_7A61
+C 0x7a61 recorre la tira del rival
+C 0x7a63 al desbordar, cierra la tira
+C 0x7a65 indexa la tabla de sprites del rival grande (0x7D94)
+C 0x7a79 esconde las casillas que no se usan (Y=0xE0)
+L 0x7a8d RIVAL_4_7A8D
+C 0x7a8d ajusta la posicion del rival grande
+L 0x7a9c RIVAL_4_7A9C
+C 0x7a9c escribe el rival grande en la VRAM
+C 0x7aa0 escribe la parte alta del rival
+C 0x7aa1 y su color
+L 0x7ab9 RIVAL_4_7AB9
+C 0x7ab9 cierra el dibujo del rival cercano
+L 0x7ac6 RIVAL_4_7AC6
+C 0x7ac6 avanza al siguiente trozo del rival
+L 0x7ad1 RIVAL_MEDIO
+C 0x7ad1 dibuja el rival a media distancia
+L 0x7ae2 RIVAL_MEDIO_7AE2
+C 0x7ae2 escribe el rival mediano
+C 0x7ae5 dobla el indice del rival mediano
+L 0x7b01 RIVAL_CERCA
+C 0x7b01 dibuja el rival lejano (pequeno)
+D 0x7b11 0x7b17 tabla_rival_a  Cabecera de sprite de rival
+F 0x7b11 3
+L 0x7b17 DATA_tabla_rival_a_7B17
+D 0x7b1b 0x7b21 tabla_rival_b  Cabecera de sprite de rival
+F 0x7b1b 3
+L 0x7b21 CHOCA_RIVAL  Resuelve el choque contra un rival
+C 0x7b21 resuelve el choque contra el rival
+D 0x7b30 0x7b42 tabla_rival_c  Sprites de rival por posicion
+F 0x7b30 2
+L 0x7b42 CHOCA_RIVAL_2
+C 0x7b42 coloca el rival tras el choque
+D 0x7b59 0x7b67 tabla_rival_d  Sprites de rival por posicion
+F 0x7b59 2
+L 0x7b67 PREPARA_RIVALES  Coloca los tres rivales al empezar la etapa
+C 0x7b67 coloca los tres rivales al empezar la etapa
+L 0x7b7c PREPARA_RIVALES_7B7C
+L 0x7b7f PREPARA_RIVALES_7B7F
+L 0x7b82 PREPARA_RIVALES_7B82
+C 0x7b82 fija la posicion de salida de cada rival
+C 0x7b86 avanza en la tabla de posiciones de salida
+L 0x7b9e PREPARA_RIVALES_7B9E
+C 0x7b9e reparte los rivales por la pista
+L 0x7baa PREPARA_RIVALES_7BAA
+L 0x7bb0 PREPARA_RIVALES_7BB0
+C 0x7bb0 cierra la colocacion inicial
+D 0x7bb9 0x7bff tabla_rival_e  Alturas/patrones de los rivales
+L 0x7bff DIBUJA_RIVALES  Vuelca los tres rivales a la VRAM ordenados por profundidad
+C 0x7bff los ordena por cercania antes de dibujar
+C 0x7c02 elige el bloque de sprites segun la cercania
+L 0x7c1b RIVALES_ESCRIBE
+L 0x7c21 RIVALES_ESCRIBE_1
+L 0x7c22 RIVALES_ESCRIBE_BUCLE
+C 0x7c22 saca el sprite del rival por el puerto
+C 0x7c24 saca cada byte del rival por el puerto
+L 0x7c34 ORDENA_RIVALES  Deja en HL/DE el rival mas cercano de los tres
+C 0x7c34 deja el rival mas cercano de los tres
+C 0x7c3a compara con la Y del tercer rival
+L 0x7c47 ORDENA_RIVALES_1
+L 0x7c4b MIRA_CHOQUE_RIVAL  Compara la posicion del jugador con la del rival
+C 0x7c4b compara la posicion del jugador con la del rival
+C 0x7c4f coches en la misma banda: choque posible
+L 0x7c60 CHOQUE_RIVAL_1
+C 0x7c60 mide la distancia al rival
+C 0x7c64 guarda la banda del rival
+L 0x7c7b CHOQUE_RIVAL_2
+C 0x7c7b mira si el jugador lo pisa por detras
+C 0x7c7d resta la anchura del rival
+L 0x7c8a CHOQUE_RIVAL_3
+C 0x7c8a mira el solape lateral
+L 0x7c94 CHOQUE_RIVAL_4
+C 0x7c94 compara las bandas de los dos coches
+L 0x7c9f CHOQUE_RIVAL_5
+C 0x7c9f lee la banda del rival
+C 0x7ca1 mira si el jugador viene por detras
+L 0x7cb3 CHOQUE_RIVAL_6
+C 0x7cb3 caso de choque de frente
+L 0x7cc1 CHOQUE_RIVAL_7
+C 0x7cc1 empuja al rival al chocar
+L 0x7cc9 CHOQUE_RIVAL_7_7CC9
+L 0x7ccb IMPACTO  Frena de golpe segun la velocidad relativa del choque
+C 0x7ccb frena de golpe segun la velocidad del choque
+L 0x7cd9 IMPACTO_NEG
+C 0x7cd9 rebote con velocidad negativa
+L 0x7ce3 IMPACTO_APLICA
+L 0x7ce8 DETECTA_CHOQUE  Comprueba si el jugador ha alcanzado a un rival
+C 0x7ce8 comprueba si el jugador alcanza al rival
+C 0x7cea lee la banda del rival alcanzado
+L 0x7cfa DETECTA_CHOQUE_7CFA
+L 0x7d02 DETECTA_CHOQUE_7D02
+C 0x7d02 mide el solape con el rival alcanzado
+C 0x7d07 fuera del margen no hay choque
+L 0x7d17 DETECTA_CHOQUE_7D17
+L 0x7d19 SONIDO_ETAPA  Arranca las melodias/efectos de fondo de la etapa
+C 0x7d19 arranca las melodias de fondo de la etapa
+L 0x7d32 REACCION_CHOQUE  Sacude el coche tras un impacto
+C 0x7d32 sacude el coche tras el impacto
+C 0x7d36 alterna el sentido de la sacudida
+L 0x7d45 REACCION_CHOQUE_7D45
+L 0x7d49 REACCION_CHOQUE_7D49
+C 0x7d49 recoloca los sprites del coche sacudido
+L 0x7d58 REACCION_CHOQUE_7D58
+C 0x7d58 cierra la reaccion al choque
+L 0x7d63 tablas_choque_base
+D 0x7d64 0x7f65 tablas_choque  Tablas de la animacion y los rotulos del choque
+L 0x7f65 FIJA_SPAWN_RIVAL  Elige donde aparece el proximo rival (0xE09D)
+C 0x7f65 elige donde aparece el proximo rival
+C 0x7f69 solo decide en la fase 0
+C 0x7f6a por defecto, a la derecha
+L 0x7f84 SPAWN_1
+L 0x7f89 CHOQUE_OBSTACULO  Mira si el jugador toca un obstaculo y frena
+L 0x7f8e OBSTACULO_BUCLE
+C 0x7f8e recorre los tres obstaculos posibles
+C 0x7f99 el ancho del obstaculo sale de la tabla 0x7FEE
+L 0x7fa9 OBSTACULO_1
+L 0x7fac OBSTACULO_CHOCA
+C 0x7fac frena a la mitad al tocar un obstaculo
+C 0x7fb0 parte la velocidad por la mitad
+L 0x7fc1 OBSTACULO_CHOCA_7FC1
+C 0x7fc1 marca el golpe contra el obstaculo
+C 0x7fc4 guarda la posicion del golpe
+L 0x7fd6 OBSTACULO_CHOCA_7FD6
+L 0x7fdf OBSTACULO_CHOCA_7FDF
+C 0x7fdf cierra la reaccion al obstaculo
+L 0x7fe8 OBSTACULO_CHOCA_7FE8
+D 0x7fee 0x7ff5 tabla_ancho_choque  Ancho de golpe de cada obstaculo (cierra en 0xFF)
+D 0x7ff5 0x8000 marca_konami  La marca oculta de Konami: RC-718 en katakana (la hallo Manuel Pazos)
