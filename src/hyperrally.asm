@@ -139,10 +139,10 @@ DATA_tabla_estados:
 ; ----------------------------------------------------------------------
 ESTADO_0:		; Primer manejador; el djnz reparte los subestados
 	djnz EST0_SUB2		;40bc   ; subestado 1 cae aqui; los demas saltan con el djnz
-	ld a,(0e003h)		;40be
-	rra			;40c1
+	ld a,(0e003h)		;40be   ; lee la fase de la interrupcion
+	rra			;40c1   ; la pasa al acarreo
 	ret nc			;40c2
-	call BAJA_ROTULO		;40c3
+	call BAJA_ROTULO		;40c3   ; hace bajar el rotulo del titulo
 	ret nz			;40c6
 	ld de,04c2ch		;40c7   ; vuelca el guion 0x4C2C
 	call DESCOMPRIME_GUION		;40ca
@@ -201,9 +201,9 @@ ESTADO_3:
 	jp PON_ESPERA_20B		;412a
 ESTADO_4:		; Pinta el numero de etapa
 	djnz EST4_SUB2		;412d   ; el djnz reparte los cuatro subestados del estado 4
-	call LIMPIA_FRANJA		;412f
-	call DIBUJA_MARCO		;4132
-	ld a,0f1h		;4135
+	call LIMPIA_FRANJA		;412f   ; limpia la franja del rotulo
+	call DIBUJA_MARCO		;4132   ; carga la fuente y el marco
+	ld a,0f1h		;4135   ; tinta la franja con el tono 0xF1
 	call TINTA_FRANJA		;4137
 	ld hl,04d12h		;413a
 	ld a,(0e060h)		;413d   ; si la etapa es 0x0D usa otro rotulo
@@ -213,9 +213,9 @@ ESTADO_4:		; Pinta el numero de etapa
 	jr EST4_UNIDADES_4171		;4147
 EST4_ROTULO:
 	ld hl,04cf6h		;4149   ; vuelca el rotulo de la etapa
-	call VUELCA_GUION		;414c
-	ld hl,03912h		;414f
-	ld a,(0e060h)		;4152
+	call VUELCA_GUION		;414c   ; vuelca el rotulo de la etapa
+	ld hl,03912h		;414f   ; apunta a la casilla del digito (0x3912)
+	ld a,(0e060h)		;4152   ; lee el numero de etapa
 	cp 00ah		;4155
 	jr c,EST4_UNIDADES		;4157
 	ld c,a			;4159
@@ -241,9 +241,9 @@ EST4_SUB2:
 	jr PON_ESPERA_20		;417d
 EST4_SUB3:
 	djnz EST4_SUB4		;417f   ; arranca la carrera en el subestado 3
-	call LIMPIA_FRANJA		;4181
-	call INICIA_CARRERA		;4184
-	ld a,(0e061h)		;4187
+	call LIMPIA_FRANJA		;4181   ; limpia la franja
+	call INICIA_CARRERA		;4184   ; prepara las variables de la carrera
+	ld a,(0e061h)		;4187   ; mira el parametro de la etapa
 	cp 010h		;418a
 	ld b,0eeh		;418c
 	call z,FIJA_BORDE		;418e   ; si la etapa vale 0x10 dibuja un adorno extra
@@ -255,10 +255,10 @@ EST4_SUB3:
 	jp FIJA_ESPERA		;419e
 EST4_SUB4:
 	djnz EST4_SUB5		;41a1   ; espera a que acabe el aviso (0xE020)
-	ld a,(0e020h)		;41a3
-	or a			;41a6
+	ld a,(0e020h)		;41a3   ; lee la bandera de fin (0xE020)
+	or a			;41a6   ; la comprueba
 	ret nz			;41a7
-	ld hl,0e06ch		;41a8
+	ld hl,0e06ch		;41a8   ; apunta a la cuenta atras (0xE06C)
 	dec (hl)			;41ab   ; cuenta atras en 0xE06C
 	ld a,00eh		;41ac
 	jp nz,ARRANCA_SONIDO		;41ae
@@ -269,11 +269,11 @@ EST4_SUB4:
 	jp SIGUE_SUBESTADO		;41bc
 EST4_SUB5:
 	djnz EST4_SUB6		;41bf   ; actualiza la carrera y mira el fin de tramo (0xE02E)
-	call ESTADO_5		;41c1
+	call ESTADO_5		;41c1   ; corre un cuadro del estado 5
 	ld a,(0e02eh)		;41c4   ; espera a que se cierre el intento (0xE02E)
-	or a			;41c7
+	or a			;41c7   ; mira si acabo el intento (0xE02E)
 	ret nz			;41c8
-	ld a,001h		;41c9
+	ld a,001h		;41c9   ; marca el sonido de clasificacion
 	call ARRANCA_SONIDO		;41cb
 	ld a,(0e085h)		;41ce
 	or a			;41d1
@@ -303,9 +303,9 @@ LIMPIA_SUBESTADO:
 EST4_SUB6:
 	ld hl,0e061h		;41f8   ; limpia el bloque de estado de carrera 0xE061..
 	ld de,0e062h		;41fb   ; pone a cero el bloque de estado de la carrera
-	ld bc,00117h		;41fe
-	ld (hl),000h		;4201
-	ldir		;4203
+	ld bc,00117h		;41fe   ; tamano del bloque a borrar
+	ld (hl),000h		;4201   ; pone el primer byte a cero
+	ldir		;4203   ; lo borra de un ldir
 	ld a,09ah		;4205
 	call ARRANCA_SONIDO		;4207
 	call CARGA_PARAM_ETAPA		;420a
@@ -326,10 +326,10 @@ ESTADO_5:
 	ret			;422d
 ESTADO_6:
 	djnz EST6_SUB2		;422e   ; el djnz reparte los subestados del estado 6
-	call ACTUALIZA_Y_MIRA_META		;4230
+	call ACTUALIZA_Y_MIRA_META		;4230   ; actualiza la carrera y mira la meta
 	ld a,(0e062h)		;4233   ; si el jugador ha llegado a meta (0xE062), rebota
-	or a			;4236
-	jp nz,PON_ESPERA_20B		;4237
+	or a			;4236   ; mira si llego a meta (0xE062)
+	jp nz,PON_ESPERA_20B		;4237   ; si no, sigue esperando
 	ld a,(0e085h)		;423a
 	or a			;423d
 	ret nz			;423e
@@ -422,9 +422,9 @@ EST7_PINTA_RESULTADO:
 	jp SIGUE_SUBESTADO		;42e6
 ESTADO_8:
 	djnz EST8_SUB2		;42e9   ; el djnz reparte los subestados del estado 8
-	call EST8_CUENTA		;42eb
-	call AVANZA_ANIMACION		;42ee
-	call ANIMA_RUEDAS		;42f1
+	call EST8_CUENTA		;42eb   ; cuenta la secuencia de resultados
+	call AVANZA_ANIMACION		;42ee   ; avanza la animacion del coche
+	call ANIMA_RUEDAS		;42f1   ; anima las ruedas
 	call VUELCA_SPRITES_COCHE		;42f4
 	ld a,(0e012h)		;42f7
 	or a			;42fa
@@ -433,10 +433,10 @@ ESTADO_8:
 	jp EST6_LIMPIA_DEMO		;42ff
 EST8_CUENTA:
 	ld a,(0e003h)		;4302   ; solo cuenta en la fase 0 de la interrupcion
-	or a			;4305
+	or a			;4305   ; solo en la fase 0
 	ret nz			;4306   ; solo trabaja en la fase 0 de la interrupcion
-	ld hl,0e064h		;4307
-	inc (hl)			;430a
+	ld hl,0e064h		;4307   ; apunta al contador (0xE064)
+	inc (hl)			;430a   ; lo sube
 	ld a,(hl)			;430b
 	cp 001h		;430c
 	jp z,ARRANCA_CRONO		;430e
@@ -450,9 +450,9 @@ EST8_CUENTA_431E:
 	jp VUELCA_GUION		;431e
 EST8_SUB2:
 	ld hl,04c81h		;4321   ; borra la pizarra y vuelca su rotulo
-	call VUELCA_GUION		;4324
-	ld a,097h		;4327
-	call ARRANCA_SONIDO		;4329
+	call VUELCA_GUION		;4324   ; vuelca el guion de la pizarra
+	ld a,097h		;4327   ; numero del sonido del resultado
+	call ARRANCA_SONIDO		;4329   ; lo arranca
 	ld hl,01120h		;432c
 	ld bc,00058h		;432f
 	ld a,0eeh		;4332
@@ -466,9 +466,9 @@ EST8_SUB2:
 	jp SIGUE_SUBESTADO		;4346
 PREPARA_ETAPA:		; Limpia el bloque 0xE058-0xE178 y avanza la etapa
 	ld hl,0e058h		;4349   ; borra de un ldir el estado de la etapa
-	ld de,0e059h		;434c
-	ld bc,00120h		;434f
-	ld (hl),000h		;4352
+	ld de,0e059h		;434c   ; apunta al segundo byte para el ldir
+	ld bc,00120h		;434f   ; tamano del bloque de etapa
+	ld (hl),000h		;4352   ; pone el primer byte a cero
 	ldir		;4354
 	ld hl,0e060h		;4356   ; sube 0xE060 a la etapa siguiente
 	inc (hl)			;4359
@@ -540,11 +540,11 @@ OCULTA_SPRITES_DESDE_C:		; Igual desde 0x3B0C, 0x1D sprites
 	ld b,01dh		;43c5
 	jr ESCRIBE_CADA_4		;43c7
 SUMA_PUNTOS:		; Suma en BCD a la puntuacion (0xE058), tope 999999
-	ld c,000h		;43c9
+	ld c,000h		;43c9   ; arranca el acarreo a cero
 	ld a,(0e002h)		;43cb   ; en demo (bit7 de 0xE002) no puntua
-	add a,a			;43ce
+	add a,a			;43ce   ; dobla el valor a sumar
 	ret p			;43cf
-	ld hl,0e058h		;43d0
+	ld hl,0e058h		;43d0   ; apunta a la puntuacion (0xE058)
 	ld a,(hl)			;43d3
 	add a,e			;43d4
 	daa			;43d5   ; suma tres bytes en BCD con ajuste decimal
@@ -686,10 +686,10 @@ DESC_PATRONES:
 	ld c,001h		;44ac
 	jr DESC_LEE		;44ae
 DESC_DOBLE:		; Variante que dibuja dos capas (mascara y patron)
-	ld a,(de)			;44b0
+	ld a,(de)			;44b0   ; lee la cuenta de la primera capa
 	ld (0e0d0h),a		;44b1   ; cuenta de la primera capa
-	inc de			;44b4
-	rla			;44b5
+	inc de			;44b4   ; avanza el puntero
+	rla			;44b5   ; saca el bit de puntero opcional
 	jr nc,DESC_DOBLE_2		;44b6
 	ex de,hl			;44b8
 	ld e,(hl)			;44b9
@@ -700,10 +700,10 @@ DESC_DOBLE:		; Variante que dibuja dos capas (mascara y patron)
 	ld (0e0d1h),hl		;44be   ; puntero opcional de la primera capa
 DESC_DOBLE_2:
 	ld a,(de)			;44c1   ; lee la cuenta de la segunda capa
-	ld (0e0d3h),a		;44c2
+	ld (0e0d3h),a		;44c2   ; guarda la cuenta de la segunda capa
 	inc de			;44c5   ; apunta al mismo origen para las dos capas
-	rla			;44c6
-	jr nc,DESC_DOBLE_ORIG		;44c7
+	rla			;44c6   ; saca su bit de puntero
+	jr nc,DESC_DOBLE_ORIG		;44c7   ; si no hay, salta
 	ex de,hl			;44c9
 	ld e,(hl)			;44ca
 	inc hl			;44cb
@@ -721,10 +721,10 @@ DESC_DOBLE_ORIG:
 	call FIJA_ESCRITURA		;44e2
 DESC_DOBLE_CAPA1:
 	ld de,(0e0d6h)		;44e5   ; vuelca la primera capa byte a byte
-	call DESC_NOMBRES		;44e9
+	call DESC_NOMBRES		;44e9   ; vuelca un byte de la capa
 	ld hl,0e0d0h		;44ec   ; baja el contador de la primera capa
-	dec (hl)			;44ef
-	jr nz,DESC_DOBLE_CAPA1		;44f0
+	dec (hl)			;44ef   ; baja la cuenta
+	jr nz,DESC_DOBLE_CAPA1		;44f0   ; repite hasta acabar la capa
 	ld hl,0e0d3h		;44f2
 	ld a,(hl)			;44f5
 	or a			;44f6
@@ -770,10 +770,10 @@ PINTA_TIRA_1:
 PINTA_TIRA_FIJA:
 	call 00053h		;4531   ; BIOS SETWRT - Enables VDP to write
 PINTA_TIRA_BUCLE:
-	ld a,(de)			;4534
-	inc de			;4535
+	ld a,(de)			;4534   ; lee el byte de la tira
+	inc de			;4535   ; avanza
 	cp 024h		;4536   ; por debajo de 0x24 es un salto de posicion
-	jr c,PINTA_TIRA_AVANZA		;4538
+	jr c,PINTA_TIRA_AVANZA		;4538   ; por debajo de 0x24 mueve la posicion
 	cp 0ffh		;453a   ; 0xFF sigue un puntero
 	jr z,PINTA_TIRA_PUNTERO		;453c
 	exx			;453e
@@ -827,9 +827,9 @@ PROT_BYTE:
 	exx			;457b
 	out (c),a		;457c   ; saca el codigo de caracter por el puerto
 	exx			;457e
-	inc de			;457f
-	ld a,(de)			;4580
-	or a			;4581
+	inc de			;457f   ; avanza al siguiente byte
+	ld a,(de)			;4580   ; lo lee
+	or a			;4581   ; 0 cierra el rotulo
 	ret z			;4582
 	cp 030h		;4583
 	jr nz,PROT_SALTO		;4585
@@ -898,9 +898,9 @@ GUION_DESTINO:
 	inc hl			;45f1
 GUION_BYTE:
 	ld a,(hl)			;45f2   ; la cuenta: 0xFF cierra el guion, 0xFE abre otro destino
-	inc hl			;45f3
-	ld b,a			;45f4
-	inc b			;45f5
+	inc hl			;45f3   ; avanza el puntero
+	ld b,a			;45f4   ; pasa la cuenta a B
+	inc b			;45f5   ; 0xFF cierra el guion
 	ret z			;45f6
 	inc b			;45f7
 	jr z,GUION_DESTINO		;45f8
@@ -922,11 +922,11 @@ RELLENA_3_TERCIOS_460D:
 	push bc			;460d
 	push de			;460e
 	call 00056h		;460f   ; BIOS FILVRM - Fills VRAM with value
-	ld de,00800h		;4612
-	add hl,de			;4615
+	ld de,00800h		;4612   ; salta al tercio siguiente (+0x800)
+	add hl,de			;4615   ; avanza el destino
 	pop de			;4616
 	pop bc			;4617
-	dec d			;4618
+	dec d			;4618   ; baja el contador de tercios
 	jr nz,RELLENA_3_TERCIOS_460D		;4619
 	ret			;461b
 DESC_3_TERCIOS:		; Descomprime el mismo bloque en los tres tercios
@@ -1029,10 +1029,10 @@ LEE_MANDOS:		; Junta joystick (PSG) y teclado (filas 7 y 8) en un byte
 	or b			;46a2   ; junta joystick y teclado
 	ret			;46a3
 MANDOS_REPOSO:		; Fuera de partida: START empieza, o entra en demo
-	call LEE_MANDOS		;46a4
+	call LEE_MANDOS		;46a4   ; lee los mandos
 	ld hl,0e051h		;46a7   ; flanco del disparo/START (0xE051)
-	call FLANCO		;46aa
-	or a			;46ad
+	call FLANCO		;46aa   ; detecta el flanco del disparo
+	or a			;46ad   ; mira si hubo pulsacion
 	ret z			;46ae
 	ld b,a			;46af
 	xor a			;46b0
@@ -1059,10 +1059,10 @@ PREPARA_SCROLL:		; Arranca el puntero (0xE00D/0xE00E) del rotulo que baja
 	ld (0e00eh),hl		;46d8
 	ret			;46db
 BAJA_ROTULO:		; Sube el puntero de VRAM una fila y pinta tres tiras
-	ld hl,(0e00eh)		;46dc
+	ld hl,(0e00eh)		;46dc   ; lee el puntero del rotulo (0xE00E)
 	ld de,0ffe0h		;46df   ; resta 0x20 (una fila de la tabla de nombres)
-	add hl,de			;46e2
-	ld (0e00eh),hl		;46e3
+	add hl,de			;46e2   ; le resta una fila
+	ld (0e00eh),hl		;46e3   ; lo guarda
 	ld a,045h		;46e6
 	ld b,003h		;46e8
 	call ESCRIBE_INCR		;46ea
@@ -1088,9 +1088,9 @@ ESCRIBE_INCR_4701:
 	ret			;470d
 INICIA_CARRERA:		; Fija las variables del coche y prepara la etapa
 	ld a,001h		;470e   ; marca la carrera como no acabada
-	ld (0e06ah),a		;4710
-	ld a,0ffh		;4713
-	ld (0e089h),a		;4715
+	ld (0e06ah),a		;4710   ; marca la carrera como no acabada
+	ld a,0ffh		;4713   ; valor de arranque
+	ld (0e089h),a		;4715   ; lo guarda en 0xE089
 	ld (0e065h),a		;4718
 	ld a,080h		;471b
 	ld (0e080h),a		;471d
@@ -1113,10 +1113,10 @@ INICIA_CARRERA:		; Fija las variables del coche y prepara la etapa
 	ld l,024h		;4749
 INICIA_CARRERA_474B:
 	ld (0e066h),hl		;474b   ; sobre la etapa 10 acorta el marcador
-	ld hl,07381h		;474e
+	ld hl,07381h		;474e   ; apunta a la tabla de anchos (0x7381)
 	call HL_MAS_A		;4751   ; indexa la tabla de anchos de marcador por la etapa
-	ld a,(hl)			;4754
-	ld hl,0738fh		;4755
+	ld a,(hl)			;4754   ; lee el ancho
+	ld hl,0738fh		;4755   ; apunta a la otra tabla (0x738F)
 	call HL_MAS_A		;4758
 	ld (0e07ah),hl		;475b
 	call LEE_PISTA_TRAMO		;475e   ; coloca coche, salpicadero y decorado
@@ -1140,10 +1140,10 @@ INICIA_CARRERA_478B:
 	jp INSTALA_SPRITES_COCHE		;478e
 ACTUALIZA_CARRERA:		; Un cuadro del motor: direccion, fisica y actores
 	call LEE_REVOLUCIONES		;4791   ; encadena direccion, fisica y actores del cuadro
-	ld (0e087h),a		;4794
+	ld (0e087h),a		;4794   ; guarda el marcador (0xE087)
 	call FIJA_SPAWN_RIVAL		;4797   ; elige donde aparece el proximo rival
-	call CONTROL_ACELERADOR		;479a
-	call SCROLL_CARRETERA		;479d
+	call CONTROL_ACELERADOR		;479a   ; lee acelerador y freno
+	call SCROLL_CARRETERA		;479d   ; desplaza la carretera
 	call SCROLL_ACUATICO		;47a0
 	call FUEGOS_META		;47a3
 	call RELOJ_PINTA_6B37		;47a6
@@ -1171,10 +1171,10 @@ ACTUALIZA_COCHE:
 	call DIBUJA_VELOCIMETRO		;47da
 AVANZA_ANIMACION:		; Cada 0xE072 cuadros pasa al siguiente fotograma
 	ld hl,0e072h		;47dd   ; cada 0xE072 cuadros pasa al fotograma siguiente
-	dec (hl)			;47e0
+	dec (hl)			;47e0   ; baja el contador de animacion
 	ret nz			;47e1   ; si aun no toca, se va
-	call VELOCIDAD_A_INDICE		;47e2
-	ld (hl),a			;47e5
+	call VELOCIDAD_A_INDICE		;47e2   ; traduce la velocidad a un indice
+	ld (hl),a			;47e5   ; lo guarda
 	inc hl			;47e6
 	inc (hl)			;47e7
 	ld a,(hl)			;47e8
@@ -1185,10 +1185,10 @@ AVANZA_ANIMACION:		; Cada 0xE072 cuadros pasa al siguiente fotograma
 	call DIBUJA_CUENTAKM		;47f0
 	jp DIBUJA_BORDES		;47f3
 ACTUALIZA_Y_MIRA_META:
-	ld a,(0e085h)		;47f6
-	or a			;47f9
+	ld a,(0e085h)		;47f6   ; lee la velocidad (0xE085)
+	or a			;47f9   ; la comprueba
 	ret z			;47fa
-	call ACTUALIZA_COCHE		;47fb
+	call ACTUALIZA_COCHE		;47fb   ; actualiza el coche
 	call APARECEN_OBJETOS		;47fe
 	ld a,(0e07ch)		;4801
 	cp 01ah		;4804   ; si el avance (0xE07C) llega a 0x1A, marca meta (0xE062)
@@ -1378,11 +1378,11 @@ MARCO_COLOR:
 	push bc			;4da3   ; rellena 16 bloques de la tabla de color
 	push hl			;4da4
 	ld bc,00008h		;4da5   ; rellena de ocho en ocho bytes
-	call RELLENA_3_TERCIOS		;4da8
+	call RELLENA_3_TERCIOS		;4da8   ; rellena una fila de color en los tres tercios
 	pop hl			;4dab
 	pop bc			;4dac
-	ld de,00008h		;4dad
-	add hl,de			;4db0
+	ld de,00008h		;4dad   ; salto de una fila (8 bytes)
+	add hl,de			;4db0   ; avanza el destino
 	inc a			;4db1
 	djnz MARCO_COLOR		;4db2
 	ld a,0f0h		;4db4
@@ -1490,10 +1490,10 @@ DATA_guion_marco:
 
 
 FONDO_ETAPA_1:		; Dibuja el fondo de la primera familia de etapas
-	ld de,051f8h		;51b8
+	ld de,051f8h		;51b8   ; apunta a los graficos del fondo (0x51F8)
 	call DESC_DOBLE		;51bb   ; dibuja las dos capas (patron y color)
-	ld hl,00920h		;51be
-	call FIJA_ESCRITURA		;51c1
+	ld hl,00920h		;51be   ; posicion de escritura en la VRAM
+	call FIJA_ESCRITURA		;51c1   ; la fija
 	ld de,05406h		;51c4
 	call DESC_DOBLE		;51c7
 	ld de,05406h		;51ca
@@ -1632,11 +1632,11 @@ DATA_graficos_fondo_1:
 FONDO_ETAPA_2:		; Fondo base mas capas de decorado (arboles, vallas)
 	call FONDO_ETAPA_1		;586c   ; reusa el fondo base y le suma capas de decorado
 	call CERO_ORIGEN_DESC		;586f   ; fija el origen comun de las dos capas
-	ld de,05725h		;5872
+	ld de,05725h		;5872   ; apunta al decorado (0x5725)
 	call DESC_DOBLE		;5875   ; dibuja la capa de decorado
-	call FIJA_ORIGEN_DESC		;5878
+	call FIJA_ORIGEN_DESC		;5878   ; fija el origen de la segunda capa
 	ld de,05a29h		;587b   ; y la de arboles/vallas
-	call DESC_DOBLE		;587e
+	call DESC_DOBLE		;587e   ; vuelca la capa
 	ld de,0592ch		;5881
 	call DESC_DOBLE		;5884
 	ld hl,00920h		;5887   ; abre la VRAM en otra fila
@@ -1745,10 +1745,10 @@ DATA_graficos_fondo_4:
 
 FONDO_ETAPA_5:		; Fondo con decorado propio y una franja repetida
 	ld de,05b96h		;5b68   ; dibuja el fondo con su decorado y una franja repetida
-	call DESC_DOBLE		;5b6b
+	call DESC_DOBLE		;5b6b   ; vuelca la capa del fondo
 	ld de,05d20h		;5b6e   ; vuelca ademas un guion de decorado
-	call DESCOMPRIME_GUION		;5b71
-	ld de,05a29h		;5b74
+	call DESCOMPRIME_GUION		;5b71   ; anade un guion del suelo
+	ld de,05a29h		;5b74   ; apunta a los arboles (0x5A29)
 	call DESC_DOBLE		;5b77
 	ld de,056c1h		;5b7a
 	call FONDO_ETAPA_1_51E9		;5b7d
@@ -1823,10 +1823,10 @@ DATA_graficos_fondo_6:
 
 FONDO_ETAPA_7:		; Fondo base con tres capas de decorado
 	call FONDO_ETAPA_1		;5d86   ; reusa el fondo base con tres capas de decorado
-	ld de,05dabh		;5d89
+	ld de,05dabh		;5d89   ; apunta al guion (0x5DAB)
 	call DESCOMPRIME_GUION		;5d8c   ; descomprime la primera capa del fondo
-	ld hl,00920h		;5d8f
-	call FIJA_ESCRITURA		;5d92
+	ld hl,00920h		;5d8f   ; posicion de escritura
+	call FIJA_ESCRITURA		;5d92   ; la fija
 	ld de,05dc1h		;5d95
 	call DESC_DOBLE		;5d98
 	ld de,05dc1h		;5d9b
@@ -1888,7 +1888,7 @@ ARRANCA_SONIDO:		; Arranca la melodia o efecto A (con di/ei alrededor)
 	push de			;5edb   ; protege los registros durante el arranque
 	push bc			;5edc
 	push af			;5edd
-	call ARRANCA_SONIDO_INT		;5ede
+	call ARRANCA_SONIDO_INT		;5ede   ; arranca el sonido de verdad
 	pop af			;5ee1
 	pop bc			;5ee2
 	pop de			;5ee3
@@ -1897,10 +1897,10 @@ ARRANCA_SONIDO:		; Arranca la melodia o efecto A (con di/ei alrededor)
 	ret			;5ee6
 ARRANCA_SONIDO_INT:		; Comprueba prioridad y prepara el canal desde la tabla
 	ld c,a			;5ee7   ; comprueba la prioridad y prepara el canal
-	ld b,001h		;5ee8
-	ld hl,0e012h		;5eea
+	ld b,001h		;5ee8   ; arranca B a 1
+	ld hl,0e012h		;5eea   ; apunta a la prioridad (0xE012)
 	and 03fh		;5eed   ; segun el numero elige el canal y su prioridad
-	cp 001h		;5eef
+	cp 001h		;5eef   ; segun el numero elige el canal
 	jr z,SON_COMPARA		;5ef1
 	cp 004h		;5ef3
 	jr c,SON_PRIO_2		;5ef5
@@ -1920,9 +1920,9 @@ SON_PRIO_2:
 	ld hl,0e02eh		;5f0c
 SON_COMPARA:
 	ld a,(hl)			;5f0f   ; no pisa un sonido de mas prioridad que suena
-	and 03fh		;5f10
-	ld e,a			;5f12
-	ld a,c			;5f13
+	and 03fh		;5f10   ; aisla el numero de sonido
+	ld e,a			;5f12   ; lo guarda
+	ld a,c			;5f13   ; compara con el que suena
 	and 03fh		;5f14
 	cp e			;5f16   ; no pisa un sonido de mas prioridad que suena
 	ret c			;5f17
@@ -1944,10 +1944,10 @@ SON_COMPARA:
 SON_COMPARA_5F3A:
 	ld (hl),001h		;5f3a   ; arranca la ficha del canal en 0xE03B
 	inc hl			;5f3c   ; copia el puntero de la melodia a la ficha del canal
-	ld (hl),001h		;5f3d
+	ld (hl),001h		;5f3d   ; marca el canal como activo
 	inc hl			;5f3f   ; avanza al puntero de datos de la melodia
-	ld (hl),c			;5f40
-	inc hl			;5f41
+	ld (hl),c			;5f40   ; guarda el numero
+	inc hl			;5f41   ; avanza la ficha
 	ld a,(de)			;5f42   ; apunta al primer byte de la melodia
 	ld (hl),a			;5f43
 	inc hl			;5f44
@@ -2036,10 +2036,10 @@ ACTUALIZA_SONIDO:		; Un cuadro del reproductor: recorre los tres canales
 	ld de,0000eh		;5fc6
 ACTUALIZA_SONIDO_5FC9:
 	exx			;5fc9   ; recorre los tres canales del reproductor
-	ld a,(ix+002h)		;5fca
+	ld a,(ix+002h)		;5fca   ; lee el modo del canal
 	push af			;5fcd
-	cp 001h		;5fce
-	jr z,CANAL_ARPEGIO		;5fd0
+	cp 001h		;5fce   ; el modo 1 es arpegio
+	jr z,CANAL_ARPEGIO		;5fd0   ; salta al arpegio
 	pop af			;5fd2
 	or a			;5fd3
 	jr nz,ACTUALIZA_SONIDO_5FDB		;5fd4
@@ -2056,11 +2056,11 @@ ACTUALIZA_SONIDO_5FDE:
 	ret			;5fe5
 CANAL_ARPEGIO:		; Canal en modo especial (efecto de barrido)
 	ld iy,0e03bh		;5fe6   ; canal en modo barrido (efecto)
-	ld a,(0e003h)		;5fea
+	ld a,(0e003h)		;5fea   ; lee la fase (0xE003)
 	bit 0,a		;5fed   ; segun el bit, escribe o borra el barrido
 	jr nz,ESCRIBE_BARRIDO		;5fef   ; salta a escribir el barrido en el PSG
-	ld a,(0e086h)		;5ff1
-	or a			;5ff4
+	ld a,(0e086h)		;5ff1   ; lee la marcha (0xE086)
+	or a			;5ff4   ; la comprueba
 	ld a,(0e085h)		;5ff5
 	ld h,000h		;5ff8
 	ld d,000h		;5ffa
@@ -2098,9 +2098,9 @@ GUARDA_BARRIDO:
 	inc iy		;602c
 ESCRIBE_BARRIDO:
 	ld de,(0e03fh)		;602e   ; escribe el tono del barrido en el PSG
-	ld a,d			;6032
-	ld d,e			;6033
-	ld e,a			;6034
+	ld a,d			;6032   ; intercambia D y E
+	ld d,e			;6033   ; (rota el par de tono)
+	ld e,a			;6034   ; completa el intercambio
 	ld h,(iy+000h)		;6035
 	ld l,(iy+001h)		;6038
 	sbc hl,de		;603b
@@ -2122,10 +2122,10 @@ ACTUALIZA_CANAL_6052:
 	ret nz			;605c
 CANAL_LEE_NOTA:
 	ld l,(ix+003h)		;605d   ; lee la siguiente nota de la melodia
-	ld h,(ix+004h)		;6060
-	ld a,(hl)			;6063
+	ld h,(ix+004h)		;6060   ; lee la parte alta del puntero
+	ld a,(hl)			;6063   ; lee la nota
 	cp 0feh		;6064   ; 0xFE cierra o repite la melodia
-	jp z,SONIDO_CTRL		;6066
+	jp z,SONIDO_CTRL		;6066   ; 0xFE es una orden de control
 	jr nc,CANAL_SILENCIO		;6069
 	bit 7,(ix+002h)		;606b
 	jp nz,CANAL_ORDEN		;606f
@@ -2139,10 +2139,10 @@ CANAL_LEE_NOTA:
 	ld a,(hl)			;607f
 CANAL_NOTA:
 	ld b,a			;6080   ; descompone el byte de nota en tono y duracion
-	and 0f0h		;6081
+	and 0f0h		;6081   ; aisla el nibble alto
 	cp 010h		;6083   ; 0x1x en el nibble alto: cambia el tono base
-	jr nz,CANAL_TONO		;6085
-	ld a,(hl)			;6087
+	jr nz,CANAL_TONO		;6085   ; si no es cero, es tono
+	ld a,(hl)			;6087   ; lee la nota completa
 	and 01fh		;6088
 	ld e,a			;608a
 	ld a,c			;608b
@@ -2176,10 +2176,10 @@ CANAL_TONO:
 	jr CANAL_FIJA_DUR		;60b8
 CANAL_TONO_60BA:
 	and 0f0h		;60ba   ; mezcla el nibble de duracion
-	ld b,a			;60bc
+	ld b,a			;60bc   ; pasa el tono a B
 	xor (hl)			;60bd   ; combina el tono con el desplazamiento
-	ld d,a			;60be
-	inc hl			;60bf
+	ld d,a			;60be   ; y a D
+	inc hl			;60bf   ; avanza el puntero
 	ld e,(hl)			;60c0
 	call PSG_CALCULA_TONO		;60c1
 	ex de,hl			;60c4
@@ -2199,11 +2199,11 @@ CANAL_FIJA_DUR:
 	jr CANAL_ESPECIAL_6135		;60db
 CANAL_SILENCIO:		; Apaga el canal
 	ld d,001h		;60dd   ; apaga el canal (silencio)
-	call PSG_TONO		;60df
+	call PSG_TONO		;60df   ; apaga el tono en el PSG
 	xor a			;60e2   ; pone a cero el modo del canal
 	ld (ix+00bh),a		;60e3   ; y su contador de repeticion
-	ld (ix+002h),a		;60e6
-	ld h,a			;60e9
+	ld (ix+002h),a		;60e6   ; marca el canal en silencio
+	ld h,a			;60e9   ; limpia el tono
 	call CANAL_ESPECIAL_6135		;60ea
 	ld a,(0e012h)		;60ed
 	cp 001h		;60f0
@@ -2221,10 +2221,10 @@ CANAL_SILENCIO:		; Apaga el canal
 	ret			;610e
 CANAL_ESPECIAL:
 	dec (ix+000h)		;610f   ; orden especial dentro de la melodia
-	jp z,CANAL_LEE_NOTA		;6112
+	jp z,CANAL_LEE_NOTA		;6112   ; vuelve a leer la nota
 	dec (ix+008h)		;6115   ; baja el contador del efecto especial
-	ld a,(ix+008h)		;6118
-	cp (ix+000h)		;611b
+	ld a,(ix+008h)		;6118   ; lee el contador (0xE008 del canal)
+	cp (ix+000h)		;611b   ; lo compara con la duracion
 	jr nz,CANAL_ESPECIAL_6129		;611e
 	ld e,a			;6120
 	ld a,(ix+00dh)		;6121
@@ -2258,10 +2258,10 @@ CANAL_ORDEN:
 	ld a,(hl)			;614b
 CANAL_ORDEN_614C:
 	cp 0f0h		;614c   ; orden: cambia de tempo o de instrumento
-	jr c,CANAL_ORDEN_6161		;614e
+	jr c,CANAL_ORDEN_6161		;614e   ; por debajo, salta
 	and 00fh		;6150   ; el nibble bajo dice el parametro
-	ld (ix+006h),a		;6152
-	inc hl			;6155
+	ld (ix+006h),a		;6152   ; guarda el parametro
+	inc hl			;6155   ; avanza
 	ld a,(hl)			;6156
 	ld (ix+00ch),a		;6157
 	inc hl			;615a
@@ -2286,10 +2286,10 @@ CANAL_ORDEN_6174:
 	djnz CANAL_ORDEN_6174		;6177
 CANAL_ORDEN_6179:
 	ld (ix+001h),a		;6179   ; orden: salta a otro punto de la melodia
-	ld a,(hl)			;617c
+	ld a,(hl)			;617c   ; lee el byte de la orden
 	call PSG_CALCULA_TONO		;617d   ; recalcula el tono de la orden
-	and 0f0h		;6180
-	rrca			;6182
+	and 0f0h		;6180   ; aisla el nibble alto
+	rrca			;6182   ; lo desplaza
 	rrca			;6183
 	rrca			;6184
 	rrca			;6185
@@ -2299,10 +2299,10 @@ CANAL_ORDEN_6179:
 	ld a,(ix+006h)		;618b
 CANAL_ORDEN_618E:
 	ld (ix+007h),a		;618e   ; orden: repite un tramo de la melodia
-	call CANAL_FIJA_DUR		;6191
+	call CANAL_FIJA_DUR		;6191   ; fija la duracion
 	ld a,b			;6194   ; aplica la repeticion del tramo
-	ld hl,061bbh		;6195
-	call HL_MAS_A		;6198
+	ld hl,061bbh		;6195   ; apunta a la tabla (0x61BB)
+	call HL_MAS_A		;6198   ; la indexa
 	ld l,(hl)			;619b
 	ld h,000h		;619c
 	ld a,(ix+005h)		;619e
@@ -2407,10 +2407,10 @@ DATA_datos_musica:
 
 MUEVE_COCHE_X:		; Desliza el coche del jugador en horizontal y coloca sus sprites
 	ld a,(0e08ch)		;65b1   ; desliza el coche en horizontal segun el volante
-	or a			;65b4
-	jr nz,$+106		;65b5
+	or a			;65b4   ; mira si hay derrape en curso
+	jr nz,$+106		;65b5   ; si lo hay, salta al final
 	ld a,(0e085h)		;65b7   ; sin partida no hace nada
-	or a			;65ba
+	or a			;65ba   ; comprueba la partida
 	ret z			;65bb
 	ld hl,0e080h		;65bc   ; puntero al estado horizontal del coche (0xE080)
 	ld a,(hl)			;65bf
@@ -2459,9 +2459,9 @@ COCHE_LIMITE_DER:
 	ret nc			;65f9
 COLOCA_SPRITES_COCHE:		; Escribe la X en los seis sprites del coche
 	ld a,(0e121h)		;65fa   ; recoloca los sprites que forman el coche (0xE121..)
-	add a,c			;65fd
-	ld (0e121h),a		;65fe
-	ld (0e125h),a		;6601
+	add a,c			;65fd   ; suma el desplazamiento a la X
+	ld (0e121h),a		;65fe   ; la escribe en el primer sprite
+	ld (0e125h),a		;6601   ; y en el segundo
 	add a,010h		;6604
 	ld (0e129h),a		;6606
 	ld (0e12dh),a		;6609
@@ -2484,10 +2484,10 @@ DATA_tabla_derrape:
 
 MUEVE_COCHE_Y:		; Ajusta la posicion vertical/altura del coche
 	ld hl,0e08eh		;661f   ; ajusta la altura del coche en los saltos
-	ld a,(hl)			;6622
+	ld a,(hl)			;6622   ; lee la altura
 	inc hl			;6623   ; pasa a la coordenada de altura
-	add a,(hl)			;6624
-	ld (hl),a			;6625
+	add a,(hl)			;6624   ; la acumula
+	ld (hl),a			;6625   ; la guarda
 	ret nc			;6626
 	dec hl			;6627
 	ld a,(hl)			;6628
@@ -2541,10 +2541,10 @@ VOLANTE_SUAVE:
 	ret			;666d
 ANIMA_RUEDAS:		; Alterna el fotograma de las ruedas segun la velocidad
 	ld a,(0e072h)		;666e   ; alterna el fotograma de las ruedas por la velocidad
-	dec a			;6671
+	dec a			;6671   ; baja el contador
 	ret nz			;6672
-	ld a,(0e085h)		;6673
-	cp 01eh		;6676
+	ld a,(0e085h)		;6673   ; lee la velocidad
+	cp 01eh		;6676   ; compara con 0x1E
 	ld hl,0e132h		;6678
 	ld a,008h		;667b
 	jr c,RUEDAS_FIJA		;667d
@@ -2557,10 +2557,10 @@ RUEDAS_FIJA:
 	ret			;6688
 MIRA_CHOQUE_LATERAL:		; Si el coche se sale, marca golpe y suena
 	ld hl,0e08bh		;6689   ; si el coche se sale del borde, marca golpe
-	ld (hl),000h		;668c
+	ld (hl),000h		;668c   ; pone a cero la bandera
 	ld a,(0e121h)		;668e   ; mira la X del primer sprite del coche (0xE121)
-	sub 02ah		;6691
-	cp 08ch		;6693
+	sub 02ah		;6691   ; resta el margen del carril
+	cp 08ch		;6693   ; compara con el ancho
 	ret c			;6695
 	ld a,(0e085h)		;6696
 	ld b,a			;6699
@@ -2571,10 +2571,10 @@ MIRA_CHOQUE_LATERAL:		; Si el coche se sale, marca golpe y suena
 	ld (hl),001h		;66a0
 CHOQUE_SACUDE:
 	ld a,(0e003h)		;66a2   ; sacude el coche y hace sonar el golpe
-	and 002h		;66a5
+	and 002h		;66a5   ; aisla el bit de la sacudida
 	dec a			;66a7   ; baja el contador de la sacudida
-	ld c,a			;66a8
-	call COLOCA_SPRITES_COCHE		;66a9
+	ld c,a			;66a8   ; lo pasa a C
+	call COLOCA_SPRITES_COCHE		;66a9   ; recoloca los sprites del coche
 	call CORTA_DERRAPE		;66ac
 	call DIBUJA_VELOCIMETRO_2		;66af
 	ld a,042h		;66b2
@@ -2583,9 +2583,9 @@ CHOQUE_SACUDE:
 	ret z			;66b8
 	jp ARRANCA_SONIDO		;66b9
 INSTALA_SPRITES_COCHE:		; Copia la plantilla del coche a 0xE120 y a la VRAM
-	ld hl,066e2h		;66bc
-	ld de,0e120h		;66bf
-	ld bc,00018h		;66c2
+	ld hl,066e2h		;66bc   ; apunta a la plantilla (0x66E2)
+	ld de,0e120h		;66bf   ; destino en la RAM (0xE120)
+	ld bc,00018h		;66c2   ; tamano de los seis sprites
 	ldir		;66c5
 	ld a,(0e061h)		;66c7   ; en ciertas etapas cambia el color de dos sprites
 	and 009h		;66ca
@@ -2617,11 +2617,11 @@ DATA_plantilla_sprites_coche:
 
 AJUSTA_ALTURA_COCHE:		; Corrige la altura del coche segun la fase
 	ld a,(0e085h)		;66fa   ; corrige la altura del coche segun la fase de salto
-	ld c,a			;66fd
+	ld c,a			;66fd   ; guarda el estado
 	or a			;66fe   ; si no hay salto en curso, se va
 	ret z			;66ff
-	ld hl,0e08ah		;6700
-	ld a,(0e075h)		;6703
+	ld hl,0e08ah		;6700   ; apunta a la casilla (0xE08A)
+	ld a,(0e075h)		;6703   ; lee la fase (0xE075)
 	ld b,a			;6706
 	cp 008h		;6707
 	jr nz,AJUSTA_ALTURA_1		;6709
@@ -2639,9 +2639,9 @@ AJUSTA_ALTURA_1:
 	ld a,c			;6718
 AJUSTA_ALTURA_1_6719:
 	inc hl			;6719   ; baja la altura del coche paso a paso
-	sub (hl)			;671a
-	inc hl			;671b
-	jr nc,AJUSTA_ALTURA_1_6719		;671c
+	sub (hl)			;671a   ; resta para comparar
+	inc hl			;671b   ; avanza en la tabla
+	jr nc,AJUSTA_ALTURA_1_6719		;671c   ; repite la busqueda
 	ld a,b			;671e
 	and 003h		;671f
 	cp 002h		;6721
@@ -2660,9 +2660,9 @@ AJUSTA_ALTURA_1_6728:
 	ld c,004h		;6735
 AJUSTA_ALTURA_1_6737:
 	and 003h		;6737   ; fija la altura final tras el salto
-	cp 002h		;6739
-	jr nz,AJUSTA_ALTURA_1_674C		;673b
-	ld a,(0e00ah)		;673d
+	cp 002h		;6739   ; compara con 2
+	jr nz,AJUSTA_ALTURA_1_674C		;673b   ; si no coincide, salta
+	ld a,(0e00ah)		;673d   ; lee los mandos (0xE00A)
 	and c			;6740
 	jr z,AJUSTA_ALTURA_1_674C		;6741
 	ld a,(0e02ch)		;6743
@@ -2696,10 +2696,10 @@ DATA_tabla_saltos_coche:
 
 
 AVANZA_CARRERA:		; Reloj de carrera: distancia, puntos, meta y proxima fase
-	ld a,(0e085h)		;676b
-	or a			;676e
+	ld a,(0e085h)		;676b   ; lee la velocidad
+	or a			;676e   ; la comprueba
 	ret z			;676f
-	ld hl,0e072h		;6770
+	ld hl,0e072h		;6770   ; apunta al reloj de tramo (0xE072)
 	dec (hl)			;6773   ; el reloj de tramo (0xE072) marca el paso
 	ret nz			;6774
 	push hl			;6775
@@ -2718,9 +2718,9 @@ AVANZA_CARRERA:		; Reloj de carrera: distancia, puntos, meta y proxima fase
 	exx			;678e
 AVANZA_TRAMO:
 	ld a,(hl)			;678f   ; avanza un tramo del recorrido
-	and 00fh		;6790
-	cp 00fh		;6792
-	jr nz,AVANZA_TRAMO_4		;6794
+	and 00fh		;6790   ; aisla el nibble bajo
+	cp 00fh		;6792   ; compara con 0x0F
+	jr nz,AVANZA_TRAMO_4		;6794   ; si no, otro caso
 	exx			;6796
 	ld a,001h		;6797   ; al agotar el tramo, avanza el recorrido
 	ld e,a			;6799
@@ -2759,10 +2759,10 @@ AVANZA_TRAMO_4:
 	dec (hl)			;67c7
 AVANZA_REVISA_COLISION:
 	ld hl,0e079h		;67c8   ; revisa si toca redibujar por colision
-	xor a			;67cb
+	xor a			;67cb   ; pone a cero
 	cp (hl)			;67cc   ; compara el segmento con el esperado (0xE073)
-	jr z,AVANZA_DIBUJA		;67cd
-	ld (hl),a			;67cf
+	jr z,AVANZA_DIBUJA		;67cd   ; si es cero, dibuja
+	ld (hl),a			;67cf   ; lo guarda
 	call DIBUJA_ESCENARIO		;67d0
 	ld hl,0e09fh		;67d3
 	ld (hl),001h		;67d6
@@ -2773,11 +2773,11 @@ AVANZA_REVISA_COLISION:
 	ld (hl),000h		;67e0
 AVANZA_DIBUJA:
 	call DIBUJA_CARRETERA		;67e2   ; dibuja coche y decorado
-	call DIBUJA_CUENTAKM		;67e5
+	call DIBUJA_CUENTAKM		;67e5   ; pinta el cuentakilometros
 	call DIBUJA_BORDES		;67e8   ; pinta los bordes de la carretera
-	call APARECEN_OBJETOS		;67eb
+	call APARECEN_OBJETOS		;67eb   ; coloca los objetos del tramo
 	ld hl,0e077h		;67ee   ; compara el tramo con el esperado
-	ld a,(hl)			;67f1
+	ld a,(hl)			;67f1   ; lee el estado
 	dec hl			;67f2
 	cp (hl)			;67f3
 	ret nz			;67f4
@@ -2803,9 +2803,9 @@ LEE_PISTA:		; Lee el guion de la pista (0xE07A) para el siguiente tramo
 LEE_PISTA_TRAMO:
 	ld hl,(0e07ah)		;6810   ; saca el byte de curva/segmento del guion de pista
 	ld c,(hl)			;6813   ; saca el byte de curva del guion de pista
-	inc hl			;6814
-	ld (0e07ah),hl		;6815
-	ld a,(0e061h)		;6818
+	inc hl			;6814   ; avanza el puntero de pista
+	ld (0e07ah),hl		;6815   ; lo guarda (0xE07A)
+	ld a,(0e061h)		;6818   ; lee el parametro de etapa
 	cp 001h		;681b
 	jr nz,PISTA_GUARDA		;681d
 	ld a,(hl)			;681f
@@ -2827,10 +2827,10 @@ PISTA_GUARDA:
 	ld a,001h		;6836
 PISTA_CURVA:
 	and 03fh		;6838   ; calcula la curvatura del segmento
-	rlca			;683a
+	rlca			;683a   ; rota el byte de curva
 	ld (hl),a			;683b   ; guarda la curvatura calculada
-	dec hl			;683c
-	ld a,c			;683d
+	dec hl			;683c   ; retrocede
+	ld a,c			;683d   ; lee la curva
 	rlca			;683e
 	and 003h		;683f
 	add a,a			;6841
@@ -2839,10 +2839,10 @@ PISTA_CURVA:
 	ret			;6844
 PISTA_AVANZA:
 	ld hl,0e075h		;6845   ; avanza al siguiente segmento de pista
-	inc (hl)			;6848
+	inc (hl)			;6848   ; sube la casilla
 	ld a,(hl)			;6849   ; lee el estado del segmento de pista
-	ld hl,0e078h		;684a
-	and 003h		;684d
+	ld hl,0e078h		;684a   ; apunta a la posicion (0xE078)
+	and 003h		;684d   ; aisla los dos bits
 	cp 002h		;684f
 	ld a,001h		;6851
 	jr nz,PISTA_AVANZA_1		;6853
@@ -2858,11 +2858,11 @@ PISTA_AVANZA_1:
 	ret			;6860
 DIBUJA_CUENTAKM:		; Pinta el cuentakilometros/rotulo lateral por tablas
 	ld a,(0e061h)		;6861   ; pinta el cuentakilometros por tablas
-	cp 008h		;6864
+	cp 008h		;6864   ; compara con 8 (etapa acuatica)
 	jr z,DIBUJA_CUENTAKM_ACUA		;6866   ; la etapa acuatica usa otra variante
-	ld hl,SIGUE_CUENTAKM		;6868
+	ld hl,SIGUE_CUENTAKM		;6868   ; empuja la continuacion como retorno
 	push hl			;686b
-	ld hl,07531h		;686c
+	ld hl,07531h		;686c   ; apunta a la tabla del cuentakm (0x7531)
 	ld de,075d6h		;686f
 	ld bc,(0e074h)		;6872
 	ld a,b			;6876
@@ -2878,10 +2878,10 @@ DIBUJA_CUENTAKM_687D:
 	ld a,b			;6887
 CUENTAKM_INDEXA:
 	add a,a			;6888   ; indexa la tabla de digitos del cuentakilometros
-	add a,a			;6889
+	add a,a			;6889   ; dobla el indice
 	add a,c			;688a   ; suma el indice a la base de la tabla
-	call HL_MAS_A		;688b
-	ld l,(hl)			;688e
+	call HL_MAS_A		;688b   ; lo suma a la base
+	ld l,(hl)			;688e   ; lee el desplazamiento
 	ld h,000h		;688f
 	ld b,h			;6891
 	add hl,de			;6892
@@ -2898,9 +2898,9 @@ DIBUJA_CUENTAKM_ACUA:		; Variante para la etapa acuatica
 	ld hl,SIGUE_CUENTAKM_ACUA		;68a2   ; variante del cuentakilometros para la etapa acuatica
 	push hl			;68a5
 	ld hl,07820h		;68a6   ; apunta a las tablas de la variante acuatica
-	ld de,078c3h		;68a9
-	ld bc,(0e074h)		;68ac
-	ld a,b			;68b0
+	ld de,078c3h		;68a9   ; tabla de la variante acuatica (0x78C3)
+	ld bc,(0e074h)		;68ac   ; lee la curvatura (0xE074)
+	ld a,b			;68b0   ; la parte alta
 	sub 004h		;68b1
 	jr nc,CUENTAKM_INDEXA		;68b3
 	ld hl,07810h		;68b5
@@ -2922,11 +2922,11 @@ SIGUE_CUENTAKM_ACUA:		; Continuacion de la variante acuatica
 	dec l			;68ce
 	rrca			;68cf
 DIBUJA_CARRETERA:		; Dibuja el trazado de la carretera segun la curvatura 0xE074
-	ld a,(0e061h)		;68d0
-	cp 008h		;68d3
+	ld a,(0e061h)		;68d0   ; lee el parametro de etapa
+	cp 008h		;68d3   ; compara con 8
 	ret z			;68d5
 	ld hl,(0e074h)		;68d6   ; 0xE074 es la curvatura de la carretera
-	ld b,000h		;68d9
+	ld b,000h		;68d9   ; limpia B
 	ld a,h			;68db
 	add a,a			;68dc
 	rr l		;68dd
@@ -2953,10 +2953,10 @@ DIBUJA_BORDES_1:
 	ld bc,0740fh		;6902
 BORDES_INDEXA:
 	rl h		;6905   ; mete la curvatura en el indice de bordes
-	ld a,h			;6907
+	ld a,h			;6907   ; la parte alta de la curvatura
 	and 00fh		;6908   ; el nibble bajo elige el trozo de borde
-	add a,a			;690a
-	add a,a			;690b
+	add a,a			;690a   ; la dobla
+	add a,a			;690b   ; (por cuatro)
 	ex af,af'			;690c
 	call BORDES_PINTA		;690d   ; pinta la primera mitad del borde
 	ex af,af'			;6910
@@ -3006,9 +3006,9 @@ GIRO_A_INDICE:		; Convierte el giro en un indice 0..7
 	ret			;693f
 CONTROL_ACELERADOR:		; Lee acelerador y freno y ajusta la velocidad
 	call CAMBIA_MARCHA		;6940   ; lee acelerador y freno y ajusta la velocidad
-	ld a,(0e00ah)		;6943
-	and 001h		;6946
-	jp nz,ACELERA_A_FONDO		;6948
+	ld a,(0e00ah)		;6943   ; lee los mandos (0xE00A)
+	and 001h		;6946   ; aisla el bit del acelerador
+	jp nz,ACELERA_A_FONDO		;6948   ; a fondo si esta pulsado
 	ld hl,(0e08bh)		;694b
 	ld a,l			;694e
 	or h			;694f
@@ -3017,9 +3017,9 @@ CONTROL_ACELERADOR:		; Lee acelerador y freno y ajusta la velocidad
 	jp DIBUJA_VELOCIMETRO		;6954
 ACELERA:		; Sube la velocidad 0xE085 hasta su tope
 	ld a,(0e00ah)		;6957   ; sube 0xE085 con el tope de la ficha del canal
-	and 010h		;695a
-	jr z,DECELERA_ROCE		;695c
-	ld hl,0e085h		;695e
+	and 010h		;695a   ; aisla el bit del freno
+	jr z,DECELERA_ROCE		;695c   ; sin acelerar, roza
+	ld hl,0e085h		;695e   ; apunta a la velocidad
 	ld a,(hl)			;6961   ; el tope depende de la marcha (0xE086)
 	inc hl			;6962
 	bit 0,(hl)		;6963
@@ -3031,10 +3031,10 @@ ACELERA_696B:
 	ret nc			;696c
 	inc hl			;696d   ; apunta al tope del cambio de marcha
 	ld a,(hl)			;696e   ; baja el contador entre subidas
-	inc hl			;696f
-	dec (hl)			;6970
+	inc hl			;696f   ; apunta al contador
+	dec (hl)			;6970   ; lo baja
 	ret nz			;6971
-	ld (hl),a			;6972
+	ld (hl),a			;6972   ; lo guarda
 	ld a,001h		;6973
 	ld hl,0e085h		;6975
 	add a,(hl)			;6978
@@ -3061,10 +3061,10 @@ FRENA_6990:
 	ret			;6991
 LEE_REVOLUCIONES:		; Devuelve el nivel de revoluciones para el sonido
 	ld hl,069b1h		;6992   ; devuelve el nivel de revoluciones para el ruido del motor
-	ld de,069bbh		;6995
+	ld de,069bbh		;6995   ; apunta a la tabla (0x69BB)
 	ld a,(0e085h)		;6998   ; el nivel sale de la velocidad actual
-	rrca			;699b
-	rrca			;699c
+	rrca			;699b   ; desplaza la velocidad
+	rrca			;699c   ; dos veces
 	rrca			;699d
 	rrca			;699e
 	and 00fh		;699f
@@ -3094,10 +3094,10 @@ DATA_tabla_revoluciones:
 
 ACELERA_A_FONDO:		; Acelerador a tope: sube velocidad y ruge el motor
 	ld a,(0e085h)		;69c6   ; acelera a fondo y hace rugir el motor
-	or a			;69c9
+	or a			;69c9   ; comprueba
 	ret z			;69ca   ; sin velocidad no acelera
-	ld a,(0e009h)		;69cb
-	and 001h		;69ce
+	ld a,(0e009h)		;69cb   ; lee el volante (0xE009)
+	and 001h		;69ce   ; aisla el bit
 	jr nz,ACELERA_SONIDO		;69d0
 	ld a,(0e02ch)		;69d2
 	or a			;69d5
@@ -3111,9 +3111,9 @@ ACELERA_SONIDO:
 DIBUJA_VELOCIMETRO_2:
 	call FRENA_2		;69e4
 DIBUJA_VELOCIMETRO:		; Escribe la cifra de velocidad (km/h) en la VRAM
-	ld a,(0e085h)		;69e7
-	ld c,a			;69ea
-	rrca			;69eb
+	ld a,(0e085h)		;69e7   ; lee la velocidad
+	ld c,a			;69ea   ; la copia
+	rrca			;69eb   ; la desplaza
 	rrca			;69ec
 	rrca			;69ed
 	and 01eh		;69ee
@@ -3175,10 +3175,10 @@ DATA_tabla_velocimetro_uni:
 
 GASTA_GASOLINA:		; Baja el nivel de gasolina y pinta su aguja
 	call AVISA_GASOLINA		;6a49   ; gasta gasolina y mueve su aguja
-	ld hl,0e067h		;6a4c
+	ld hl,0e067h		;6a4c   ; apunta al contador (0xE067)
 	ld a,(hl)			;6a4f   ; lee el nivel de gasolina
-	dec hl			;6a50
-	dec (hl)			;6a51
+	dec hl			;6a50   ; retrocede
+	dec (hl)			;6a51   ; lo baja
 	ret nz			;6a52
 	ld (hl),a			;6a53
 	ld a,(0e085h)		;6a54
@@ -3199,10 +3199,10 @@ GASOLINA_1:
 	ld (0e063h),a		;6a6b
 GASOLINA_AGUJA:
 	ld de,0e065h		;6a6e   ; coloca la aguja de la gasolina en su angulo
-	ld a,(de)			;6a71
+	ld a,(de)			;6a71   ; lee el nivel
 	and 07fh		;6a72   ; aisla el angulo de la aguja
-	ld a,0a8h		;6a74
-	jr z,GASOLINA_PINTA		;6a76
+	ld a,0a8h		;6a74   ; valor por defecto de la aguja
+	jr z,GASOLINA_PINTA		;6a76   ; si es cero, pinta
 	ld a,(de)			;6a78
 	rrca			;6a79
 	rrca			;6a7a
@@ -3248,7 +3248,7 @@ AVISA_GASOLINA:		; Cuando queda poca, parpadea y suena el aviso
 	ld bc,00807h		;6ab6
 AVISA_GASOLINA_1:
 	ld a,(0e003h)		;6ab9   ; marca el ritmo del parpadeo de aviso
-	ld e,a			;6abc
+	ld e,a			;6abc   ; aisla el bit del parpadeo
 	and c			;6abd   ; el patron de bits marca el ritmo del parpadeo
 	ret nz			;6abe
 	ld a,00ah		;6abf
