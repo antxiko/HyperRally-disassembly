@@ -18,7 +18,7 @@
 #      guardado automatico se pierde al cerrar la ventana. Pasado el
 #      2026-08-20: se perdio una partida entera por esto.
 #
-# Uso:  openmsx -machine Philips_VG_8020 -cart hyperolympic2.rom \
+# Uso:  openmsx -machine Philips_VG_8020 -cart hyperrally.rom \
 #               -script tools/omsx_graba.tcl
 
 set ::destino [file normalize "work/replays"]

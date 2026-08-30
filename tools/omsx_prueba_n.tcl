@@ -5,7 +5,7 @@
 # en adelante corre el juego solo, con sus datos. Es una MEDIDA: no se toca el
 # cartucho, solo el numero de prueba que el propio juego usa como indice.
 #
-# Uso: PRUEBA=2 openmsx -machine Philips_VG_8020 -cart hyperolympic2.rom \
+# Uso: PRUEBA=2 openmsx -machine Philips_VG_8020 -cart hyperrally.rom \
 #                       -script tools/omsx_prueba_n.tcl
 
 proc opcion {n d} { global env ; if {[info exists env($n)]} { return $env($n) } ; return $d }

@@ -24,7 +24,7 @@
 #   TP_SALIDA   fichero de resultado
 #
 #   TP_MODO=partida TP_PILOTO=1 "C:/Program Files/openMSX/openmsx.exe" \
-#       -machine Philips_VG_8020 -cart hyperolympic2.rom \
+#       -machine Philips_VG_8020 -cart hyperrally.rom \
 #       -script tools/omsx_coste_interrupcion.tcl
 
 source "C:/Users/Antxiko/Documents/DES_ASM/TIMEPILOT_DISAM/tools/omsx_comun.tcl"

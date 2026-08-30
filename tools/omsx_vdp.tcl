@@ -17,7 +17,7 @@
 # Variables de entorno: TP_MODO (demo|partida), TP_PILOTO, TP_VENTANA, TP_SALIDA.
 #
 #   TP_MODO=partida TP_PILOTO=1 "C:/Program Files/openMSX/openmsx.exe" \
-#       -machine Philips_VG_8020 -cart hyperolympic2.rom -script tools/omsx_vdp.tcl
+#       -machine Philips_VG_8020 -cart hyperrally.rom -script tools/omsx_vdp.tcl
 
 source "C:/Users/Antxiko/Documents/DES_ASM/TIMEPILOT_DISAM/tools/omsx_comun.tcl"
 

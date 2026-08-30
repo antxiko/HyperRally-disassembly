@@ -5,7 +5,7 @@
 # y el reloj solo va bien en una maquina de 60 Hz. Aqui se comprueba corriendo
 # los 100 metros con el boton apretado y muestreando las dos cosas.
 #
-# Uso: openmsx -machine <maquina> -cart hyperolympic2.rom \
+# Uso: openmsx -machine <maquina> -cart hyperrally.rom \
 #              -script tools/omsx_reloj.tcl
 
 proc opcion {n d} { global env ; if {[info exists env($n)]} { return $env($n) } ; return $d }

@@ -6,7 +6,7 @@
 # partir de que momento el ritmo es estable. Vuelca a work/omsx/control.txt.
 #
 #   "C:/Program Files/openMSX/openmsx.exe" -machine Philips_VG_8020 \
-#       -cart hyperolympic2.rom -script tools/omsx_control.tcl
+#       -cart hyperrally.rom -script tools/omsx_control.tcl
 #
 # Si esto sale a cero, la instrumentacion esta rota; no es un hallazgo.
 

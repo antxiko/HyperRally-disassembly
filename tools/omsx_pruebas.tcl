@@ -6,7 +6,7 @@
 # MEDIDA, no una modificacion del cartucho: la pantalla que sale la dibuja el
 # propio juego con sus propios datos.
 #
-# Uso: openmsx -machine Philips_VG_8020 -cart hyperolympic2.rom \
+# Uso: openmsx -machine Philips_VG_8020 -cart hyperrally.rom \
 #              -script tools/omsx_pruebas.tcl
 
 set ::SALIDA [file normalize "work/omsx"]
