@@ -84,12 +84,12 @@ audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
 </style>
 <div class="w"><nav class="top"><a href="index.html">Home</a><a href="GETTING-STARTED.html">Start</a><a href="THE-GAME.html" style=color:var(--tinta)>The game</a><a href="THE-CARTRIDGE.html">The cartridge</a><a href="THE-CODE.html">The code</a><a href="FINDINGS.html">Findings</a><a href="IN-THE-EMULATOR.html">In the emulator</a><a href="OPEN-QUESTIONS.html">Open questions</a><a href="es/EL-JUEGO.html" style="margin-left:auto;color:var(--oro)">Castellano</a></nav>
 <h1 id="the-game">The game</h1>
-<p>Hyper Rally is a rally race seen from behind the car, down a road drawn in fake 3D. You drive one car through <b>twelve stages</b>, each with its own scenery, and one of them is run on <b>water</b>.</p>
+<p>Hyper Rally is a rally race seen from behind the car, down a road drawn in fake 3D. You drive one car through <b>twelve stages</b>, each with its own scenery: day, tunnel, snow, desert, a storm that throws lightning, and <b>two run at night</b> under a field of scrolling stars.</p>
 <h2 id="the-dashboard">The dashboard</h2>
 <p>Under the road sits a dashboard the code keeps up to date every frame:</p>
 <ul><li>a <b>speedometer</b> in km/h (drawn by 0x69E7 from the speed at 0xE085),</li><li>a <b>fuel gauge</b> whose needle drops as you go (0x6A49) and blinks a warning when it runs low (0x6AA9),</li><li>a <b>gear</b> indicator that shifts with the speed (0x6ACF), and</li><li>a <b>clock</b> that counts up in BCD (0x6B0E).</li></ul>
 <h2 id="driving">Driving</h2>
 <p>The wheel comes from 0x6643, the accelerator and brake from 0x6940. The car is six sprites (template at 0x66E2) that 0x65FA slides sideways as you steer. Rival cars come up the road; hitting one, or a roadside obstacle, brakes you hard.</p>
 <h2 id="the-rally">The rally</h2>
-<p>The stage number lives in 0xE060 and runs from 1 to twelve. Reaching the end of a stage&#x27;s track advances it; at stage thirteen the rally is over. There is a finish celebration with fireworks (0x724B) when you make the line.</p>
+<p>The stage number lives in 0xE060 and runs from 1 to twelve. Reaching the end of a stage&#x27;s track advances it; at stage thirteen the rally is over. Each stage also loads its own parameter into 0xE061, and that is what decides whether the car skids, whether the sky carries stars, and whether lightning falls.</p>
 <footer><p><em>Hyper Rally</em> was published by Konami for the MSX; its catalogue number is RC-718 and it is 16 KB. All rights in the game remain with their holders. This is preservation, study and documentation work, and the cartridge image is not distributed.</p></footer></div>

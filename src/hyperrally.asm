@@ -246,7 +246,7 @@ EST4_SUB3:
 	ld a,(0e061h)		;4187   ; mira el parametro de la etapa
 	cp 010h		;418a
 	ld b,0eeh		;418c
-	call z,FIJA_BORDE		;418e   ; si la etapa vale 0x10 dibuja un adorno extra
+	call z,FIJA_BORDE		;418e   ; la etapa de tormenta pone el borde gris (0xEE)
 	ld hl,04d66h		;4191
 	call VUELCA_GUION		;4194
 	ld a,004h		;4197
@@ -1121,7 +1121,7 @@ INICIA_CARRERA_474B:
 	ld (0e07ah),hl		;475b
 	call LEE_PISTA_TRAMO		;475e   ; coloca coche, salpicadero y decorado
 	call CARGA_CARRETERA		;4761
-	call INSTALA_ACUATICO		;4764
+	call INSTALA_ESTRELLAS		;4764
 	call DESPACHA_FONDO_ETAPA		;4767
 	call DIBUJA_TILES_ETAPA		;476a   ; dibuja el fondo y los tiles de la etapa
 	call DIBUJA_PANEL_JUEGO		;476d
@@ -1134,7 +1134,7 @@ INICIA_CARRERA_474B:
 	jr z,INICIA_CARRERA_478B		;4781
 	bit 0,a		;4783
 	call z,SCROLL_VUELCA		;4785
-	call nz,DIBUJA_BORDES		;4788
+	call nz,DIBUJA_BORDES_TUNEL		;4788
 INICIA_CARRERA_478B:
 	call ALGO_6B5E		;478b
 	jp INSTALA_SPRITES_COCHE		;478e
@@ -1144,8 +1144,8 @@ ACTUALIZA_CARRERA:		; Un cuadro del motor: direccion, fisica y actores
 	call FIJA_SPAWN_RIVAL		;4797   ; elige donde aparece el proximo rival
 	call CONTROL_ACELERADOR		;479a   ; lee acelerador y freno
 	call SCROLL_CARRETERA		;479d   ; desplaza la carretera
-	call SCROLL_ACUATICO		;47a0
-	call FUEGOS_META		;47a3
+	call SCROLL_ESTRELLAS		;47a0
+	call RELAMPAGO		;47a3
 	call RELOJ_PINTA_6B37		;47a6
 	call AVANZA_RELOJ		;47a9
 	call GASTA_GASOLINA		;47ac
@@ -1183,7 +1183,7 @@ AVANZA_ANIMACION:		; Cada 0xE072 cuadros pasa al siguiente fotograma
 	ld (hl),a			;47ec
 	call DIBUJA_CARRETERA		;47ed
 	call DIBUJA_CUENTAKM		;47f0
-	jp DIBUJA_BORDES		;47f3
+	jp DIBUJA_BORDES_TUNEL		;47f3
 ACTUALIZA_Y_MIRA_META:
 	ld a,(0e085h)		;47f6   ; lee la velocidad (0xE085)
 	or a			;47f9   ; la comprueba
@@ -2774,7 +2774,7 @@ AVANZA_REVISA_COLISION:
 AVANZA_DIBUJA:
 	call DIBUJA_CARRETERA		;67e2   ; dibuja coche y decorado
 	call DIBUJA_CUENTAKM		;67e5   ; pinta el cuentakilometros
-	call DIBUJA_BORDES		;67e8   ; pinta los bordes de la carretera
+	call DIBUJA_BORDES_TUNEL		;67e8   ; pinta los bordes de la carretera
 	call APARECEN_OBJETOS		;67eb   ; coloca los objetos del tramo
 	ld hl,0e077h		;67ee   ; compara el tramo con el esperado
 	ld a,(hl)			;67f1   ; lee el estado
@@ -2858,8 +2858,8 @@ PISTA_AVANZA_1:
 	ret			;6860
 DIBUJA_CUENTAKM:		; Pinta el cuentakilometros/rotulo lateral por tablas
 	ld a,(0e061h)		;6861   ; pinta el cuentakilometros por tablas
-	cp 008h		;6864   ; compara con 8 (etapa acuatica)
-	jr z,DIBUJA_CUENTAKM_ACUA		;6866   ; la etapa acuatica usa otra variante
+	cp 008h		;6864   ; compara con 8 (las dos etapas de noche)
+	jr z,DIBUJA_CUENTAKM_NOCHE		;6866   ; de noche el rotulo lateral va por otras tablas
 	ld hl,SIGUE_CUENTAKM		;6868   ; empuja la continuacion como retorno
 	push hl			;686b
 	ld hl,07531h		;686c   ; apunta a la tabla del cuentakm (0x7531)
@@ -2894,11 +2894,11 @@ CUENTAKM_INDEXA:
 	ld hl,039a0h		;689b
 	add hl,bc			;689e
 	jp PINTA_ROTULO		;689f
-DIBUJA_CUENTAKM_ACUA:		; Variante para la etapa acuatica
-	ld hl,SIGUE_CUENTAKM_ACUA		;68a2   ; variante del cuentakilometros para la etapa acuatica
+DIBUJA_CUENTAKM_NOCHE:		; Variante para las etapas de noche
+	ld hl,SIGUE_CUENTAKM_NOCHE		;68a2   ; variante del rotulo lateral para las etapas de noche
 	push hl			;68a5
-	ld hl,07820h		;68a6   ; apunta a las tablas de la variante acuatica
-	ld de,078c3h		;68a9   ; tabla de la variante acuatica (0x78C3)
+	ld hl,07820h		;68a6   ; apunta a las tablas de la variante de noche
+	ld de,078c3h		;68a9   ; tabla de la variante de noche (0x78C3)
 	ld bc,(0e074h)		;68ac   ; lee la curvatura (0xE074)
 	ld a,b			;68b0   ; la parte alta
 	sub 004h		;68b1
@@ -2914,8 +2914,8 @@ SIGUE_CUENTAKM:		; Continuacion tras pintar (retorno empujado)
 	dec hl			;68c4
 	inc l			;68c5
 	rrca			;68c6
-SIGUE_CUENTAKM_ACUA:		; Continuacion de la variante acuatica
-	jr nc,$+50		;68c7   ; continua el dibujo de la variante acuatica
+SIGUE_CUENTAKM_NOCHE:		; Continuacion de la variante de noche
+	jr nc,$+50		;68c7   ; continua el dibujo de la variante de noche
 	inc (hl)			;68c9
 	ld sp,02f2fh		;68ca
 	dec hl			;68cd
@@ -2939,7 +2939,7 @@ DIBUJA_CARRETERA:		; Dibuja el trazado de la carretera segun la curvatura 0xE074
 	inc hl			;68e7
 	ld d,(hl)			;68e8
 	jp PINTA_TIRA		;68e9
-DIBUJA_BORDES:		; Pinta los bordes/rayas de la carretera
+DIBUJA_BORDES_TUNEL:		; Pinta los bordes solo en el tunel (0xE061=1)
 	ld a,(0e061h)		;68ec
 	cp 001h		;68ef
 	ret nz			;68f1
@@ -3632,7 +3632,7 @@ DIBUJA_HORIZONTE:		; Pinta la franja de horizonte segun el tipo de etapa
 	cp 001h		;6d7d
 	jr z,HORIZONTE_RELLENA		;6d7f
 	cp 008h		;6d81
-	jr z,HORIZONTE_ETAPA12		;6d83
+	jr z,HORIZONTE_NOCHE		;6d83
 	call DESC_NOMBRES_ABRE		;6d85
 	ld a,(0e061h)		;6d88
 	cp 006h		;6d8b
@@ -3649,17 +3649,17 @@ HORIZONTE_RELLENA:
 	ld bc,00280h		;6da1
 	ld a,0fch		;6da4
 	jp 00056h		;6da6   ; BIOS FILVRM - Fills VRAM with value
-HORIZONTE_ETAPA12:
+HORIZONTE_NOCHE:
 	call HORIZONTE_RELLENA		;6da9
 	ld a,(0e060h)		;6dac
 	cp 00ch		;6daf
-	jp nz,ESCRIBE_ACUATICO		;6db1
+	jp nz,ESCRIBE_ESTRELLAS		;6db1
 	call HORIZONTE_RELLENA		;6db4
 	ld hl,03860h		;6db7
 	ld a,0fbh		;6dba
 	ld bc,00120h		;6dbc
 	call 00056h		;6dbf   ; BIOS FILVRM - Fills VRAM with value
-	jp ESCRIBE_ACUATICO		;6dc2
+	jp ESCRIBE_ESTRELLAS		;6dc2
 
 ; ----------------------------------------------------------------------
 ; DATOS tiras_horizonte: Tiras del horizonte y los rotulos laterales
@@ -3755,7 +3755,7 @@ DATA_escenario_lateral:
 SCROLL_CARRETERA:		; Desplaza las rayas de la carretera hacia el jugador
 	ld a,(0e061h)		;707a   ; desplaza las rayas de la carretera hacia el jugador
 	bit 5,a		;707d
-	jp nz,DIBUJA_EYECATCH		;707f   ; la etapa acuatica va por otro camino
+	jp nz,DIBUJA_EYECATCH		;707f   ; el desierto (bit 5 de 0xE061) va por otro camino
 	rra			;7082
 	ret c			;7083
 	ld a,(0e075h)		;7084   ; con la fase 8 (parado) no scrollea
@@ -3871,68 +3871,68 @@ DATA_patrones_carretera:
 ; ======================================================================
 
 
-SCROLL_ACUATICO:		; Anima la superficie de la etapa acuatica (0xE061=8)
-	ld a,(0e061h)		;71ac   ; anima la superficie de la etapa acuatica
-	cp 008h		;71af   ; solo en la etapa acuatica
-	ret nz			;71b1   ; solo en la etapa acuatica (0xE061=8)
+SCROLL_ESTRELLAS:		; Corre el campo de estrellas del cielo nocturno (0xE061=8)
+	ld a,(0e061h)		;71ac   ; corre las estrellas del cielo nocturno
+	cp 008h		;71af   ; solo con 0xE061=8, que son las etapas 5 y 12
+	ret nz			;71b1   ; en las demas no hay estrellas y se va
 	ld a,(0e075h)		;71b2   ; el paso depende de la fase 0xE075
 	cp 008h		;71b5
 	ret z			;71b7
-	ld hl,0e0aeh		;71b8   ; baja el contador del oleaje
+	ld hl,0e0aeh		;71b8   ; baja el retardo entre pasos de la estrella
 	dec (hl)			;71bb
 	ret nz			;71bc
-	ld de,07215h		;71bd   ; indexa la tabla de fotogramas de la ola
+	ld de,07215h		;71bd   ; indexa la tabla de retardos por velocidad
 	ld a,(0e085h)		;71c0
-	or a			;71c3   ; sin velocidad, el agua no se mueve
+	or a			;71c3   ; con el coche parado las estrellas no corren
 	ret z			;71c4
-	rlca			;71c5   ; la velocidad marca cuanto avanza la ola
+	rlca			;71c5   ; la velocidad elige el retardo: a mas velocidad, mas rapidas
 	rlca			;71c6
 	rlca			;71c7
 	and 007h		;71c8
 	call DE_MAS_A		;71ca
 	ld a,(de)			;71cd
-	ld (hl),a			;71ce   ; guarda el fotograma en la ficha
+	ld (hl),a			;71ce   ; recarga el retardo en 0xE0AE
 	inc hl			;71cf
 	inc (hl)			;71d0
 	ld a,(0e075h)		;71d1
 	ld c,a			;71d4
 	bit 2,a		;71d5   ; el bit 2 de la fase alterna el sentido
-	jr nz,ACUATICO_1		;71d7
+	jr nz,ESTRELLAS_CICLA		;71d7
 	dec (hl)			;71d9
 	dec (hl)			;71da
-ACUATICO_1:
-	bit 3,(hl)		;71db   ; cierra el ciclo de la animacion acuatica
-	jp z,ESCRIBE_ACUATICO		;71dd
+ESTRELLAS_CICLA:
+	bit 3,(hl)		;71db   ; al pasar de ocho, la estrella salta de casilla
+	jp z,ESCRIBE_ESTRELLAS		;71dd
 	ld a,(hl)			;71e0
 	and 007h		;71e1
 	ld (hl),a			;71e3
 	ld a,0fbh		;71e4
-	call ESCRIBE_SPRITES_16		;71e6
+	call ESCRIBE_16_CASILLAS		;71e6
 	ld b,010h		;71e9
 	ld hl,0e0b0h		;71eb
-ACUATICO_BUCLE:
-	ld e,(hl)			;71ee   ; recorre los sprites de la ola
+ESTRELLAS_SALTA:
+	ld e,(hl)			;71ee   ; recorre las 16 casillas de estrella
 	inc hl			;71ef
 	ld d,(hl)			;71f0
 	inc de			;71f1
 	bit 2,c		;71f2
-	jr nz,ACUATICO_BUCLE_71F8		;71f4
+	jr nz,ESTRELLAS_SALTA_71F8		;71f4
 	dec de			;71f6
 	dec de			;71f7
-ACUATICO_BUCLE_71F8:
-	ld (hl),d			;71f8   ; escribe la ola desplazada
+ESTRELLAS_SALTA_71F8:
+	ld (hl),d			;71f8   ; guarda la casilla ya desplazada
 	dec hl			;71f9
 	ld (hl),e			;71fa
 	inc hl			;71fb
 	inc hl			;71fc
-	djnz ACUATICO_BUCLE		;71fd
-ESCRIBE_ACUATICO:
+	djnz ESTRELLAS_SALTA		;71fd
+ESCRIBE_ESTRELLAS:
 	ld a,(0e0afh)		;71ff
 	add a,0f3h		;7202
-ESCRIBE_SPRITES_16:
+ESCRIBE_16_CASILLAS:
 	ld b,010h		;7204
 	ld hl,0e0b0h		;7206
-ESCRIBE_SPRITES_BUCLE:
+ESCRIBE_16_BUCLE:
 	ld e,(hl)			;7209
 	inc hl			;720a
 	ld d,(hl)			;720b
@@ -3940,13 +3940,14 @@ ESCRIBE_SPRITES_BUCLE:
 	ex de,hl			;720d
 	call 0004dh		;720e   ; BIOS WRTVRM - Writes data in VRAM
 	ex de,hl			;7211
-	djnz ESCRIBE_SPRITES_BUCLE		;7212
+	djnz ESCRIBE_16_BUCLE		;7212
 	ret			;7214
 
 ; ----------------------------------------------------------------------
-; DATOS tabla_acuatico: Patrones de la animacion acuatica
+; DATOS retardo_estrellas: Retardo del paso de la estrella, por tramo de
+;   velocidad
 ;   0x7215..0x721d  (8 bytes)
-DATA_tabla_acuatico:
+DATA_retardo_estrellas:
 	defb 011h,010h,00fh,00eh,00dh,00ch,00bh,00ah	; 7215  ........
 
 ; ======================================================================
@@ -3954,7 +3955,7 @@ DATA_tabla_acuatico:
 ; ======================================================================
 
 
-INSTALA_ACUATICO:		; Copia la tabla de sprites acuaticos a 0xE0AE
+INSTALA_ESTRELLAS:		; Copia los dos contadores y las 16 casillas de estrella a 0xE0AE
 	ld hl,07229h		;721d
 	ld de,0e0aeh		;7220
 	ld bc,00022h		;7223
@@ -3962,9 +3963,10 @@ INSTALA_ACUATICO:		; Copia la tabla de sprites acuaticos a 0xE0AE
 	ret			;7228
 
 ; ----------------------------------------------------------------------
-; DATOS punteros_sprites_rival: Punteros de patron de los rivales/objetos
+; DATOS casillas_estrellas: Los dos contadores y las 16 casillas de estrella
+;   (0x3884..0x3930)
 ;   0x7229..0x724b  (34 bytes)
-DATA_punteros_sprites_rival:
+DATA_casillas_estrellas:
 	defw 00401h,03884h,0388fh,03895h,03897h,038aah,038b4h,038bdh	; 7229
 	defw 038c7h,038c9h,038d9h,038e1h,038eah,0390dh,03917h,03927h	; 7239
 	defw 03930h	; 7249
@@ -3974,25 +3976,25 @@ DATA_punteros_sprites_rival:
 ; ======================================================================
 
 
-FUEGOS_META:		; Fuegos artificiales al llegar a meta (0xE061=0x10)
-	ld a,(0e061h)		;724b   ; fuegos artificiales al llegar a meta
+RELAMPAGO:		; El rayo de la etapa de tormenta (0xE061=0x10)
+	ld a,(0e061h)		;724b   ; el rayo solo cae en la etapa de tormenta
 	cp 010h		;724e
-	ret nz			;7250   ; espera a que pase el aviso de meta
-	ld hl,0e0a9h		;7251   ; contador de la secuencia de meta (0xE0A9)
+	ret nz			;7250   ; en las demas etapas no hay tormenta
+	ld hl,0e0a9h		;7251   ; contador de los ocho pasos del rayo (0xE0A9)
 	ld a,(hl)			;7254
 	or a			;7255
-	jp z,GIRA_ROTULO_META		;7256
+	jp z,ELIGE_RAYO		;7256
 	dec a			;7259
 	ld (hl),a			;725a
-	jp z,FUEGOS_3		;725b
+	jp z,RELAMPAGO_DIBUJA		;725b
 	cp 001h		;725e
-	jp z,FUEGOS_2		;7260
+	jp z,RELAMPAGO_APAGA		;7260
 	cp 007h		;7263
 	ret nz			;7265
 	ld a,(0e070h)		;7266
 	sub 008h		;7269
 	cp 0c4h		;726b
-	jr nc,FUEGOS_1		;726d
+	jr nc,RELAMPAGO_CORTA		;726d
 	ld a,043h		;726f
 	call ARRANCA_SONIDO		;7271
 	ld b,0efh		;7274
@@ -4000,15 +4002,15 @@ FUEGOS_META:		; Fuegos artificiales al llegar a meta (0xE061=0x10)
 	ld de,(0e0aah)		;7279
 	ld hl,(0e0ach)		;727d
 	jp PINTA_ROTULO		;7280
-FUEGOS_1:
+RELAMPAGO_CORTA:
 	xor a			;7283
 	ld (0e0a9h),a		;7284
-	jr FUEGOS_COLOR		;7287
-FUEGOS_2:
+	jr RELAMPAGO_ESPERA		;7287
+RELAMPAGO_APAGA:
 	ld b,0eeh		;7289
 	call FIJA_BORDE		;728b
-FUEGOS_COLOR:
-	ld a,r		;728e   ; da un color aleatorio a los fuegos
+RELAMPAGO_ESPERA:
+	ld a,r		;728e   ; espera al azar hasta el rayo siguiente (0xE0A8)
 	and 003h		;7290
 	rrca			;7292
 	rrca			;7293
@@ -4016,15 +4018,15 @@ FUEGOS_COLOR:
 	add a,018h		;7295
 	ld (0e0a8h),a		;7297
 	ret			;729a
-FUEGOS_3:
+RELAMPAGO_DIBUJA:
 	ld de,(0e0aah)		;729b
 	ld hl,(0e0ach)		;729f
 	jp 0e1c0h		;72a2
-GIRA_ROTULO_META:		; Rota los rotulos que se muestran en la meta
-	dec hl			;72a5   ; rota el rotulo que se ensena en la meta
+ELIGE_RAYO:		; Elige al azar la forma del rayo y donde cae
+	dec hl			;72a5   ; baja la espera; al llegar a cero prepara el rayo siguiente
 	dec (hl)			;72a6
 	ret nz			;72a7   ; baja el contador del giro de rotulo
-	inc hl			;72a8   ; rearma el contador a ocho
+	inc hl			;72a8   ; rearma la secuencia del rayo a ocho pasos
 	ld (hl),008h		;72a9
 	ld hl,072d2h		;72ab
 	ld a,r		;72ae
@@ -4047,9 +4049,10 @@ GIRA_ROTULO_META:		; Rota los rotulos que se muestran en la meta
 	ret			;72d1
 
 ; ----------------------------------------------------------------------
-; DATOS guiones_meta: Punteros y guiones de los rotulos de la meta
+; DATOS guiones_rayo: Cuatro punteros (tres formas distintas) y los guiones
+;   del rayo
 ;   0x72d2..0x731d  (75 bytes)
-DATA_guiones_meta:
+DATA_guiones_rayo:
 	defb 0f5h,072h,0dah,072h,0f5h,072h,00ch,073h,08ch,086h,088h,01fh,08ch,001h,08eh,01fh	; 72d2  .r.r.r.s........
 	defb 089h,001h,08bh,001h,08ah,0c2h,001h,0bbh,01fh,0c3h,001h,0c5h,001h,0bfh,0c1h,001h	; 72e2  ................
 	defb 0c4h,0bch,000h,08ah,08ch,001h,08dh,021h,087h,001h,08eh,021h,08dh,08fh,001h,08eh	; 72f2  .......!...!....

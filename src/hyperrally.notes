@@ -126,7 +126,7 @@ C 0x417f arranca la carrera en el subestado 3
 C 0x4181 limpia la franja
 C 0x4184 prepara las variables de la carrera
 C 0x4187 mira el parametro de la etapa
-C 0x418e si la etapa vale 0x10 dibuja un adorno extra
+C 0x418e la etapa de tormenta pone el borde gris (0xEE)
 L 0x41a1 EST4_SUB4
 C 0x41a1 espera a que acabe el aviso (0xE020)
 C 0x41a3 lee la bandera de fin (0xE020)
@@ -804,8 +804,8 @@ C 0x684d aisla los dos bits
 L 0x685b PISTA_AVANZA_1
 L 0x6861 DIBUJA_CUENTAKM  Pinta el cuentakilometros/rotulo lateral por tablas
 C 0x6861 pinta el cuentakilometros por tablas
-C 0x6864 compara con 8 (etapa acuatica)
-C 0x6866 la etapa acuatica usa otra variante
+C 0x6864 compara con 8 (las dos etapas de noche)
+C 0x6866 de noche el rotulo lateral va por otras tablas
 C 0x6868 empuja la continuacion como retorno
 C 0x686c apunta a la tabla del cuentakm (0x7531)
 L 0x687d DIBUJA_CUENTAKM_687D
@@ -815,16 +815,16 @@ C 0x6889 dobla el indice
 C 0x688a suma el indice a la base de la tabla
 C 0x688b lo suma a la base
 C 0x688e lee el desplazamiento
-L 0x68a2 DIBUJA_CUENTAKM_ACUA  Variante para la etapa acuatica
-C 0x68a2 variante del cuentakilometros para la etapa acuatica
-C 0x68a6 apunta a las tablas de la variante acuatica
-C 0x68a9 tabla de la variante acuatica (0x78C3)
+L 0x68a2 DIBUJA_CUENTAKM_NOCHE  Variante para las etapas de noche
+C 0x68a2 variante del rotulo lateral para las etapas de noche
+C 0x68a6 apunta a las tablas de la variante de noche
+C 0x68a9 tabla de la variante de noche (0x78C3)
 C 0x68ac lee la curvatura (0xE074)
 C 0x68b0 la parte alta
 L 0x68be SIGUE_CUENTAKM  Continuacion tras pintar (retorno empujado)
 C 0x68be continua el dibujo tras pintar el rotulo
-L 0x68c7 SIGUE_CUENTAKM_ACUA  Continuacion de la variante acuatica
-C 0x68c7 continua el dibujo de la variante acuatica
+L 0x68c7 SIGUE_CUENTAKM_NOCHE  Continuacion de la variante de noche
+C 0x68c7 continua el dibujo de la variante de noche
 L 0x68d0 DIBUJA_CARRETERA  Dibuja el trazado de la carretera segun la curvatura 0xE074
 C 0x68d0 lee el parametro de etapa
 C 0x68d3 compara con 8
@@ -832,7 +832,7 @@ C 0x68d6 0xE074 es la curvatura de la carretera
 C 0x68d9 limpia B
 C 0x68e2 indexa la tabla de formas 0x767C
 C 0x68e6 saca el puntero de la forma
-L 0x68ec DIBUJA_BORDES  Pinta los bordes/rayas de la carretera
+L 0x68ec DIBUJA_BORDES_TUNEL  Pinta los bordes solo en el tunel (0xE061=1)
 L 0x68f5 DIBUJA_BORDES_1
 C 0x68f5 dibuja el borde con otra tabla
 L 0x68f9 INIT_68F9
@@ -1012,7 +1012,7 @@ C 0x6d74 pinta la franja del horizonte segun el tipo de etapa
 C 0x6d7a el tipo de etapa (0xE061) elige el horizonte
 L 0x6d98 HORIZONTE_1
 L 0x6da1 HORIZONTE_RELLENA
-L 0x6da9 HORIZONTE_ETAPA12
+L 0x6da9 HORIZONTE_NOCHE
 D 0x6dc5 0x6e22 tiras_horizonte  Tiras del horizonte y los rotulos laterales
 L 0x6e22 DIBUJA_ESCENARIO  Pinta el decorado lateral animado (0xE075)
 C 0x6e22 pinta el decorado lateral animado
@@ -1024,7 +1024,7 @@ L 0x6e4d ESCENARIO_2
 D 0x6e55 0x707a escenario_lateral  Guiones del decorado lateral por tipo de etapa
 L 0x707a SCROLL_CARRETERA  Desplaza las rayas de la carretera hacia el jugador
 C 0x707a desplaza las rayas de la carretera hacia el jugador
-C 0x707f la etapa acuatica va por otro camino
+C 0x707f el desierto (bit 5 de 0xE061) va por otro camino
 C 0x7084 con la fase 8 (parado) no scrollea
 C 0x708d baja el contador del scroll
 L 0x709b SCROLL_CARRETERA_709B
@@ -1047,45 +1047,45 @@ C 0x710e y el segundo nibble de cada byte
 L 0x7118 CARGA_CARRETERA_1_7118
 D 0x711e 0x71ac patrones_carretera  Punteros y patrones de carretera por etapa
 F 0x711e w
-L 0x71ac SCROLL_ACUATICO  Anima la superficie de la etapa acuatica (0xE061=8)
-C 0x71ac anima la superficie de la etapa acuatica
-C 0x71af solo en la etapa acuatica
-C 0x71b1 solo en la etapa acuatica (0xE061=8)
+L 0x71ac SCROLL_ESTRELLAS  Corre el campo de estrellas del cielo nocturno (0xE061=8)
+C 0x71ac corre las estrellas del cielo nocturno
+C 0x71af solo con 0xE061=8, que son las etapas 5 y 12
+C 0x71b1 en las demas no hay estrellas y se va
 C 0x71b2 el paso depende de la fase 0xE075
-C 0x71b8 baja el contador del oleaje
-C 0x71bd indexa la tabla de fotogramas de la ola
-C 0x71c3 sin velocidad, el agua no se mueve
-C 0x71c5 la velocidad marca cuanto avanza la ola
-C 0x71ce guarda el fotograma en la ficha
+C 0x71b8 baja el retardo entre pasos de la estrella
+C 0x71bd indexa la tabla de retardos por velocidad
+C 0x71c3 con el coche parado las estrellas no corren
+C 0x71c5 la velocidad elige el retardo: a mas velocidad, mas rapidas
+C 0x71ce recarga el retardo en 0xE0AE
 C 0x71d5 el bit 2 de la fase alterna el sentido
-L 0x71db ACUATICO_1
-C 0x71db cierra el ciclo de la animacion acuatica
-L 0x71ee ACUATICO_BUCLE
-C 0x71ee recorre los sprites de la ola
-L 0x71f8 ACUATICO_BUCLE_71F8
-C 0x71f8 escribe la ola desplazada
-L 0x71ff ESCRIBE_ACUATICO
-L 0x7204 ESCRIBE_SPRITES_16
-L 0x7209 ESCRIBE_SPRITES_BUCLE
-D 0x7215 0x721d tabla_acuatico  Patrones de la animacion acuatica
+L 0x71db ESTRELLAS_CICLA
+C 0x71db al pasar de ocho, la estrella salta de casilla
+L 0x71ee ESTRELLAS_SALTA
+C 0x71ee recorre las 16 casillas de estrella
+L 0x71f8 ESTRELLAS_SALTA_71F8
+C 0x71f8 guarda la casilla ya desplazada
+L 0x71ff ESCRIBE_ESTRELLAS
+L 0x7204 ESCRIBE_16_CASILLAS
+L 0x7209 ESCRIBE_16_BUCLE
+D 0x7215 0x721d retardo_estrellas  Retardo del paso de la estrella, por tramo de velocidad
 F 0x7215 8
-L 0x721d INSTALA_ACUATICO  Copia la tabla de sprites acuaticos a 0xE0AE
-D 0x7229 0x724b punteros_sprites_rival  Punteros de patron de los rivales/objetos
+L 0x721d INSTALA_ESTRELLAS  Copia los dos contadores y las 16 casillas de estrella a 0xE0AE
+D 0x7229 0x724b casillas_estrellas  Los dos contadores y las 16 casillas de estrella (0x3884..0x3930)
 F 0x7229 w
-L 0x724b FUEGOS_META  Fuegos artificiales al llegar a meta (0xE061=0x10)
-C 0x724b fuegos artificiales al llegar a meta
-C 0x7250 espera a que pase el aviso de meta
-C 0x7251 contador de la secuencia de meta (0xE0A9)
-L 0x7283 FUEGOS_1
-L 0x7289 FUEGOS_2
-L 0x728e FUEGOS_COLOR
-C 0x728e da un color aleatorio a los fuegos
-L 0x729b FUEGOS_3
-L 0x72a5 GIRA_ROTULO_META  Rota los rotulos que se muestran en la meta
-C 0x72a5 rota el rotulo que se ensena en la meta
+L 0x724b RELAMPAGO  El rayo de la etapa de tormenta (0xE061=0x10)
+C 0x724b el rayo solo cae en la etapa de tormenta
+C 0x7250 en las demas etapas no hay tormenta
+C 0x7251 contador de los ocho pasos del rayo (0xE0A9)
+L 0x7283 RELAMPAGO_CORTA
+L 0x7289 RELAMPAGO_APAGA
+L 0x728e RELAMPAGO_ESPERA
+C 0x728e espera al azar hasta el rayo siguiente (0xE0A8)
+L 0x729b RELAMPAGO_DIBUJA
+L 0x72a5 ELIGE_RAYO  Elige al azar la forma del rayo y donde cae
+C 0x72a5 baja la espera; al llegar a cero prepara el rayo siguiente
 C 0x72a7 baja el contador del giro de rotulo
-C 0x72a8 rearma el contador a ocho
-D 0x72d2 0x731d guiones_meta  Punteros y guiones de los rotulos de la meta
+C 0x72a8 rearma la secuencia del rayo a ocho pasos
+D 0x72d2 0x731d guiones_rayo  Cuatro punteros (tres formas distintas) y los guiones del rayo
 L 0x731d DIBUJA_EYECATCH  Compone una imagen simetrica espejando cada fila
 C 0x731d compone la imagen espejando cada fila
 C 0x7323 lee el byte de la fila a espejar

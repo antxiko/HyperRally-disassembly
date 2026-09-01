@@ -2,7 +2,8 @@
 
 Hyper Rally es una carrera de rally vista por detrás del coche, por una
 carretera dibujada en falso 3D. Conduces un coche a lo largo de **doce etapas**,
-cada una con su decorado, y una de ellas se corre sobre **agua**.
+cada una con su decorado: día, túnel, nieve, desierto, una tormenta que echa
+rayos y **dos que se corren de noche** bajo un campo de estrellas en marcha.
 
 ## El salpicadero
 
@@ -24,5 +25,6 @@ borde, te frena en seco.
 ## El rally
 
 El número de etapa vive en 0xE060 y va de 1 a doce. Llegar al final del trazado
-de una etapa la avanza; en la trece se acaba el rally. Al cruzar la meta hay una
-celebración con fuegos artificiales (0x724B).
+de una etapa la avanza; en la trece se acaba el rally. Cada etapa carga además
+su parámetro en 0xE061, y es él quien decide si el coche derrapa, si el cielo
+lleva estrellas y si caen rayos.

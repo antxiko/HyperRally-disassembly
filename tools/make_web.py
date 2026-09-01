@@ -131,12 +131,15 @@ HALLAZGOS = {
          "carretera dibujar. Las rayas se mueven hacia el jugador desplazando "
          "un buffer (0x707A) al ritmo de la velocidad, y el escalado de los "
          "objetos por profundidad sale de las tablas de 0x6CD5.</p>"),
-        ("Doce etapas, terrenos distintos, y una es acuática",
+        ("Doce etapas de ocho compositores, y dos son de noche",
          "<p>0xE060 va de 1 a 0x0C y con él se elige, por la tabla de 0x481A, "
-         "el compositor de fondo de cada etapa. El parámetro 0xE061 (de la "
-         "tabla 0x4372) marca el terreno: cuando vale 8 la etapa es "
-         "<b>acuática</b> y la superficie se anima aparte (0x71AC). Los "
-         "compositores se reaprovechan: ocho rutinas cubren las doce etapas.</p>"),
+         "el compositor de fondo de cada etapa: ocho rutinas cubren las doce, y "
+         "el compositor de la 12 llama al de la 5. El parámetro 0xE061 (tabla "
+         "0x4372) es un <b>campo de bits</b> con lo que cada etapa tiene de "
+         "particular: el bit 1 es el suelo resbaladizo de la nieve, 0x01 el "
+         "túnel, 0x10 la tormenta y 0x08 la noche. En las dos nocturnas, 0x71AC "
+         "corre un campo de <b>dieciséis estrellas</b> por el cielo, a "
+         "precisión de píxel y al ritmo de la velocidad del coche.</p>"),
         ("El sonido es el reproductor de tres canales de la casa",
          "<p>El motor de 0x5FB7 recorre tres fichas de catorce bytes (0xE010), "
          "lee las melodías con su intérprete de órdenes y escribe el PSG por la "
@@ -172,13 +175,15 @@ HALLAZGOS = {
          "road shape to draw. The stripes move toward the player by scrolling a "
          "buffer (0x707A) at the speed's pace, and the depth scaling of the "
          "roadside objects comes from the tables at 0x6CD5.</p>"),
-        ("Twelve stages, different terrains, and one is water",
+        ("Twelve stages from eight composers, and two of them at night",
          "<p>0xE060 runs from 1 to 0x0C and with it, through the table at "
-         "0x481A, the background composer of each stage is chosen. The "
-         "parameter 0xE061 (from the table at 0x4372) marks the terrain: when "
-         "it is 8 the stage is <b>water</b> and the surface is animated apart "
-         "(0x71AC). The composers are reused: eight routines cover the twelve "
-         "stages.</p>"),
+         "0x481A, the background composer of each stage is chosen: eight "
+         "routines cover the twelve, and stage 12's composer calls stage 5's. "
+         "The parameter 0xE061 (table at 0x4372) is a <b>bit field</b> holding "
+         "what is particular about each stage: bit 1 is the slippery snow, "
+         "0x01 the tunnel, 0x10 the storm and 0x08 the night. In the two night "
+         "stages, 0x71AC runs a field of <b>sixteen stars</b> across the sky, "
+         "at pixel precision and at the pace of the car's speed.</p>"),
         ("The sound is the house's three-channel player",
          "<p>The engine at 0x5FB7 walks three fourteen-byte records (0xE010), "
          "reads the melodies with its command interpreter and writes the PSG "

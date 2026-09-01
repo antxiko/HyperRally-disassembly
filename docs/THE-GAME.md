@@ -1,8 +1,9 @@
 # The game
 
 Hyper Rally is a rally race seen from behind the car, down a road drawn in fake
-3D. You drive one car through **twelve stages**, each with its own scenery, and
-one of them is run on **water**.
+3D. You drive one car through **twelve stages**, each with its own scenery: day,
+tunnel, snow, desert, a storm that throws lightning, and **two run at night**
+under a field of scrolling stars.
 
 ## The dashboard
 
@@ -23,5 +24,6 @@ cars come up the road; hitting one, or a roadside obstacle, brakes you hard.
 ## The rally
 
 The stage number lives in 0xE060 and runs from 1 to twelve. Reaching the end of
-a stage's track advances it; at stage thirteen the rally is over. There is a
-finish celebration with fireworks (0x724B) when you make the line.
+a stage's track advances it; at stage thirteen the rally is over. Each stage
+also loads its own parameter into 0xE061, and that is what decides whether the
+car skids, whether the sky carries stars, and whether lightning falls.
