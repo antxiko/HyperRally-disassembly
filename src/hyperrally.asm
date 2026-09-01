@@ -4269,15 +4269,15 @@ ACTUALIZA_RIVALES_79BB:
 ACTUALIZA_RIVAL:		; Un rival: avanza, escala por profundidad y colisiona
 	ld a,(0e09fh)		;79cc   ; avanza un rival, lo escala y mira el choque
 	or a			;79cf
-	jr nz,RIVAL_ESCALA		;79d0
+	jr nz,RIVAL_NIVEL		;79d0
 	ld a,(hl)			;79d2
 	inc hl			;79d3
 	inc hl			;79d4
 	ld (hl),a			;79d5
 	dec hl			;79d6
 	dec hl			;79d7
-RIVAL_ESCALA:
-	ld c,000h		;79d8   ; escala el rival por su profundidad
+RIVAL_NIVEL:		; Clasifica al rival en tres niveles de cercania
+	ld c,000h		;79d8   ; clasifica el rival en tres niveles de cercania (0, 1 y 2)
 	add a,010h		;79da
 	cp 026h		;79dc
 	jr c,RIVAL_1		;79de
@@ -4307,7 +4307,7 @@ RIVAL_COLISION:
 	ld c,(hl)			;7a03   ; y su patron
 	add a,010h		;7a04
 	cp 026h		;7a06
-	jp c,RIVAL_CERCA		;7a08
+	jp c,RIVAL_REPARTE		;7a08
 	cp 038h		;7a0b
 	jp c,RIVAL_MEDIO		;7a0d
 	ld de,RIVAL_SIGUE_NIVEL_1		;7a10
@@ -4328,7 +4328,7 @@ RIVAL_3:
 	add a,004h		;7a28
 RIVAL_4:
 	ld b,a			;7a2a   ; prepara el sprite del rival cercano
-	call CHOCA_RIVAL		;7a2b
+	call APAGA_SPRITES_RIVAL		;7a2b
 	ld hl,07f47h		;7a2e   ; indexa la tabla de sombras del rival
 	ld a,(0e075h)		;7a31   ; por la fase de animacion 0xE075
 	add a,a			;7a34   ; dobla el indice de la tabla de sombras
@@ -4467,8 +4467,8 @@ RIVAL_MEDIO_7AE2:
 	ld l,(hl)			;7afb
 	ld h,03ah		;7afc
 	jp PINTA_TIRA_1		;7afe
-RIVAL_CERCA:
-	ld a,b			;7b01   ; dibuja el rival lejano (pequeno)
+RIVAL_REPARTE:		; Reparte por el nivel de cercania (0xE09E)
+	ld a,b			;7b01   ; el rival lejano, el mas pequeno, no llega a esta rama
 	cp 016h		;7b02
 	call c,DETECTA_CHOQUE_7D02		;7b04
 	ld a,(0e09eh)		;7b07
@@ -4476,7 +4476,7 @@ RIVAL_CERCA:
 	ret z			;7b0b
 	dec a			;7b0c
 	jr z,DATA_tabla_rival_a_7B17		;7b0d
-	jr CHOCA_RIVAL		;7b0f
+	jr APAGA_SPRITES_RIVAL		;7b0f
 RIVAL_SIGUE_NIVEL_1:		; Continuacion empujada en 0x7A10: solo sigue si 0xE09E vale 1
 	ld a,(0e09eh)		;7b11   ; empujada como retorno en 0x7A10, no es destino de ningun salto
 	cp 001h		;7b14   ; solo sigue con el nivel de cercania 1
@@ -4488,8 +4488,8 @@ RIVAL_SIGUE_NIVEL_2:		; Continuacion empujada en 0x7AD1: solo sigue si 0xE09E va
 	ld a,(0e09eh)		;7b1b   ; empujada como retorno en 0x7AD1, no es destino de ningun salto
 	cp 002h		;7b1e   ; solo sigue con el nivel de cercania 2
 	ret nz			;7b20
-CHOCA_RIVAL:		; Resuelve el choque contra un rival
-	ld a,0e0h		;7b21   ; resuelve el choque contra el rival
+APAGA_SPRITES_RIVAL:		; Esconde los cuatro sprites del rival (Y = 0xE0)
+	ld a,0e0h		;7b21   ; con el rival encima se apagan sus sprites: de cerca va con tiles
 	ld (ix+000h),a		;7b23
 	ld (ix+004h),a		;7b26
 	ld (ix+008h),a		;7b29

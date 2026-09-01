@@ -93,6 +93,35 @@ Llevada a mano por sus dieciséis pasos en openMSX, los cuatro tiles quedan
 exactamente como dice la ROM: 0xB3 = `01 03 07 0F 1F 3F 7F FF`, 0xB4 macizo,
 0xB5 = `80 C0 E0 F0 F8 FC FE FF` (0xB3 con los bits del revés) y 0xB6 macizo.
 
+## De cerca, el rival deja de ser sprites
+
+Son tres rivales, con fichas de tres bytes en 0xE090, 0xE093 y 0xE096. 0x79D8
+clasifica a cada uno en tres niveles de cercanía —suma 0x10 a la ficha y compara
+contra 0x26 y 0x38— y deja el nivel en 0xE09E. 0x7C34 se queda con el más
+cercano de los tres.
+
+Esos tres niveles son **métodos de dibujo, no tallas**: forzando a todos los
+rivales por la misma rama salen a la vez un coche grande y uno pequeño, o sea
+que la talla la pone un índice escalado dentro de cada rama (0x7A10 lo desplaza
+y lo desvía, e indexa la tabla de sombras de 0x7F47 por la fase de animación).
+
+Lo que pasa cuando un rival se te pone al lado es que **0x7B21 escribe 0xE0 en
+la Y de sus cuatro sprites**: los apaga. Visto jugando: ocho pasadas seguidas
+por ahí mientras la ficha de un rival subía de 0x29 a 0x45 y su nivel pasaba de
+1 a 2, con ese coche grande y pegado en pantalla. Así que el rival cercano no
+son esos sprites, que es lo que
+[theNestruo](https://github.com/theNestruo) describía como sprites primero y
+tiles al acercarse.
+
+Dónde aparece el siguiente lo decide 0x7F65, y sólo en la fase 0 de 0xE003: la
+mitad de las veces (por el registro de refresco) la X es 0x1F, y si no sale de
+(etapa − 1) mod 4 — 0x7F, 0x5F, 0x3F, 0x1F. **Cicla cada cuatro etapas**, no
+crece con la etapa.
+
+Queda abierto: el byte de la ficha da la vuelta entera de 0x00 a 0xFF, o sea que
+es una posición relativa que cicla y no una profundidad, y las trayectorias no
+están documentadas todavía.
+
 ## La etapa de tormenta echa rayos
 
 0x724B sólo corre cuando 0xE061 vale 0x10 —la etapa 7, la del cielo gris y,

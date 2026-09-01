@@ -1113,8 +1113,8 @@ L 0x79bb ACTUALIZA_RIVALES_79BB
 C 0x79c8 desactiva el acelerador tras un choque (0x6957 = ret)
 L 0x79cc ACTUALIZA_RIVAL  Un rival: avanza, escala por profundidad y colisiona
 C 0x79cc avanza un rival, lo escala y mira el choque
-L 0x79d8 RIVAL_ESCALA
-C 0x79d8 escala el rival por su profundidad
+L 0x79d8 RIVAL_NIVEL  Clasifica al rival en tres niveles de cercania
+C 0x79d8 clasifica el rival en tres niveles de cercania (0, 1 y 2)
 L 0x79e6 RIVAL_1
 C 0x79e6 coloca el rival en su banda de la pista
 L 0x79f7 RIVAL_2
@@ -1152,8 +1152,8 @@ C 0x7ad1 dibuja el rival a media distancia
 L 0x7ae2 RIVAL_MEDIO_7AE2
 C 0x7ae2 escribe el rival mediano
 C 0x7ae5 dobla el indice del rival mediano
-L 0x7b01 RIVAL_CERCA
-C 0x7b01 dibuja el rival lejano (pequeno)
+L 0x7b01 RIVAL_REPARTE  Reparte por el nivel de cercania (0xE09E)
+C 0x7b01 el rival lejano, el mas pequeno, no llega a esta rama
 L 0x7b17 DATA_tabla_rival_a_7B17
 L 0x7b11 RIVAL_SIGUE_NIVEL_1  Continuacion empujada en 0x7A10: solo sigue si 0xE09E vale 1
 C 0x7b11 empujada como retorno en 0x7A10, no es destino de ningun salto
@@ -1161,8 +1161,8 @@ C 0x7b14 solo sigue con el nivel de cercania 1
 L 0x7b1b RIVAL_SIGUE_NIVEL_2  Continuacion empujada en 0x7AD1: solo sigue si 0xE09E vale 2
 C 0x7b1b empujada como retorno en 0x7AD1, no es destino de ningun salto
 C 0x7b1e solo sigue con el nivel de cercania 2
-L 0x7b21 CHOCA_RIVAL  Resuelve el choque contra un rival
-C 0x7b21 resuelve el choque contra el rival
+L 0x7b21 APAGA_SPRITES_RIVAL  Esconde los cuatro sprites del rival (Y = 0xE0)
+C 0x7b21 con el rival encima se apagan sus sprites: de cerca va con tiles
 D 0x7b30 0x7b42 tabla_rival_c  Sprites de rival por posicion
 F 0x7b30 2
 L 0x7b42 CHOCA_RIVAL_2

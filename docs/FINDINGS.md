@@ -91,6 +91,35 @@ Driven through its sixteen steps in openMSX, the four tiles end up exactly as
 the ROM predicts: 0xB3 = `01 03 07 0F 1F 3F 7F FF`, 0xB4 solid, 0xB5 =
 `80 C0 E0 F0 F8 FC FE FF` (0xB3 with its bits reversed) and 0xB6 solid.
 
+## Close up, a rival stops being sprites
+
+Three rivals, with three-byte records at 0xE090, 0xE093 and 0xE096. 0x79D8
+sorts each one into three levels of closeness — it adds 0x10 to the record and
+compares against 0x26 and 0x38 — and leaves the level at 0xE09E. 0x7C34 picks
+the nearest of the three.
+
+Those three levels are **drawing methods, not sizes**: forcing every rival
+through the same branch puts a big car and a small one on screen at once, so
+the size comes from a scaled index inside each branch (0x7A10 shifts and offsets
+it, and indexes the shadow table at 0x7F47 by the animation phase).
+
+What happens when a rival draws level with you is that **0x7B21 writes 0xE0 into
+the Y of its four sprites** — it switches them off. Watched while playing: eight
+consecutive passes through it as one rival's record climbed from 0x29 to 0x45
+and its level went from 1 to 2, with that car large and right alongside on
+screen. So the near rival is not made of those sprites, which is what
+[theNestruo](https://github.com/theNestruo) described as sprites first and tiles
+when closer.
+
+Where the next one appears is 0x7F65, and only on phase 0 of 0xE003: half the
+time (from the refresh register) the X is 0x1F, and otherwise it comes from
+(stage − 1) mod 4 — 0x7F, 0x5F, 0x3F, 0x1F. It **cycles every four stages**
+rather than growing with the stage.
+
+Still open: the record byte cycles the whole way from 0x00 to 0xFF, so it is a
+relative position that wraps rather than a depth, and the trajectories are not
+documented yet.
+
 ## The storm stage throws lightning
 
 0x724B runs only when 0xE061 is 0x10 — stage 7, the one with the grey sky and,
