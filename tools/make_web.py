@@ -196,6 +196,19 @@ HALLAZGOS = {
 }
 
 GALERIA = [
+    ("titulo.png",
+     "La pantalla del título, montada con los mismos pasos del cartucho: "
+     "DIBUJA_MARCO (0x4D8E) descomprime la fuente en la tabla de patrones y "
+     "reparte los colores, DIBUJA_PANEL_JUEGO (0x4878) llena el resto de la "
+     "tabla de color, y el guión de 0x4C9E -el que vuelca "
+     "PREPARA_PANTALLA_CARRERA- pinta el rótulo en las filas 5 a 7 y las dos "
+     "líneas de texto con los glifos de la fuente",
+     "The title screen, built with the cartridge's own steps: DIBUJA_MARCO "
+     "(0x4D8E) decompresses the font into the pattern table and lays out the "
+     "colours, DIBUJA_PANEL_JUEGO (0x4878) fills the rest of the colour table, "
+     "and the script at 0x4C9E -the one PREPARA_PANTALLA_CARRERA dumps- paints "
+     "the wordmark on rows 5 to 7 and the two lines of text with the font's "
+     "glyphs"),
     ("fuente.png",
      "La fuente del cartucho, dibujada desde la ROM por "
      "<code>tools/graficos.py</code>, descomprimiendo el guión de 0x4DEA con el "
@@ -227,7 +240,13 @@ def main(argv):
     imgdir, salida, idioma = argv[1:4]
     t = TXT[idioma]
 
-    cabecera = "<h1>Hyper Rally</h1>"
+    # El "logotipo" de la cabecera no es un montaje ni una captura: es el rotulo
+    # que el propio cartucho pinta en su pantalla de titulo, las filas 5 a 7 del
+    # guion de 0x4C9E, dibujadas desde la ROM por graficos.py. Si el PNG no
+    # esta, se cae al texto.
+    ruta_logo = os.path.join(imgdir, "rotulo.png")
+    cabecera = (f'<img src="{img64(ruta_logo)}" alt="Hyper Rally">'
+                if os.path.exists(ruta_logo) else "<h1>Hyper Rally</h1>")
 
     nav = "".join(f'<a href="{h}">{x}</a>' for h, x in t["nav"])
     nav += "".join(f'<a href="{h}">{x}</a>' for h, x in t["docnav"])
