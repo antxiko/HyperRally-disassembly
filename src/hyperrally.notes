@@ -1024,7 +1024,7 @@ L 0x6e4d ESCENARIO_2
 D 0x6e55 0x707a escenario_lateral  Guiones del decorado lateral por tipo de etapa
 L 0x707a SCROLL_CARRETERA  Desplaza las rayas de la carretera hacia el jugador
 C 0x707a desplaza las rayas de la carretera hacia el jugador
-C 0x707f el desierto (bit 5 de 0xE061) va por otro camino
+C 0x707f el desierto (bit 5) sube piramides en vez de scrollear
 C 0x7084 con la fase 8 (parado) no scrollea
 C 0x708d baja el contador del scroll
 L 0x709b SCROLL_CARRETERA_709B
@@ -1086,14 +1086,18 @@ C 0x72a5 baja la espera; al llegar a cero prepara el rayo siguiente
 C 0x72a7 baja el contador del giro de rotulo
 C 0x72a8 rearma la secuencia del rayo a ocho pasos
 D 0x72d2 0x731d guiones_rayo  Cuatro punteros (tres formas distintas) y los guiones del rayo
-L 0x731d DIBUJA_EYECATCH  Compone una imagen simetrica espejando cada fila
-C 0x731d compone la imagen espejando cada fila
+L 0x731d SUBEN_PIRAMIDES  Sube las piramides del desierto, una fila por umbral
+C 0x731d sube las piramides del desierto segun lo que queda de etapa
 C 0x7323 lee el byte de la fila a espejar
 C 0x7339 vuelca la mitad izquierda
 C 0x7340 y la derecha, espejada
-L 0x7345 EYECATCH_BUCLE
+L 0x7345 PIRAMIDES_ESPEJO
 C 0x7346 espeja la fila con INVIERTE_BITS para la mitad derecha
-D 0x7351 0x767c tablas_carretera  Datos del eyecatch y tablas de forma de la carretera
+D 0x7351 0x7371 piramide_ventana  Ventana deslizante de la piramide: 16 ceros y el triangulo
+F 0x7351 8
+D 0x7371 0x7381 piramide_umbrales  Umbral de 0xE071 que abre cada una de las 16 filas
+F 0x7371 16
+D 0x7381 0x767c tablas_carretera  Tabla de anchos y tablas de forma de la carretera
 D 0x767c 0x796c graficos_carretera  Formas de carretera, bordes y patrones de sprite
 L 0x796c AGITA_RIVALES  Da un empujon aleatorio a los rivales y los actualiza
 L 0x7974 ACTUALIZA_RIVALES  Mueve y dibuja los tres coches rivales; mira choques

@@ -2,8 +2,9 @@
 
 Hyper Rally es una carrera de rally vista por detrás del coche, por una
 carretera dibujada en falso 3D. Conduces un coche a lo largo de **doce etapas**,
-cada una con su decorado: día, túnel, nieve, desierto, una tormenta que echa
-rayos y **dos que se corren de noche** bajo un campo de estrellas en marcha.
+cada una con su decorado: día, túnel, nieve, un desierto donde suben tres
+pirámides según te acercas al final, una tormenta que echa rayos y **dos que se
+corren de noche** bajo un campo de estrellas en marcha.
 
 ## El salpicadero
 

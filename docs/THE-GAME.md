@@ -2,8 +2,9 @@
 
 Hyper Rally is a rally race seen from behind the car, down a road drawn in fake
 3D. You drive one car through **twelve stages**, each with its own scenery: day,
-tunnel, snow, desert, a storm that throws lightning, and **two run at night**
-under a field of scrolling stars.
+tunnel, snow, a desert where three pyramids rise as you near the end, a storm
+that throws lightning, and **two run at night** under a field of scrolling
+stars.
 
 ## The dashboard
 

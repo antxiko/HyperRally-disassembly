@@ -3755,7 +3755,7 @@ DATA_escenario_lateral:
 SCROLL_CARRETERA:		; Desplaza las rayas de la carretera hacia el jugador
 	ld a,(0e061h)		;707a   ; desplaza las rayas de la carretera hacia el jugador
 	bit 5,a		;707d
-	jp nz,DIBUJA_EYECATCH		;707f   ; el desierto (bit 5 de 0xE061) va por otro camino
+	jp nz,SUBEN_PIRAMIDES		;707f   ; el desierto (bit 5) sube piramides en vez de scrollear
 	rra			;7082
 	ret c			;7083
 	ld a,(0e075h)		;7084   ; con la fase 8 (parado) no scrollea
@@ -4064,8 +4064,8 @@ DATA_guiones_rayo:
 ; ======================================================================
 
 
-DIBUJA_EYECATCH:		; Compone una imagen simetrica espejando cada fila
-	ld hl,07371h		;731d   ; compone la imagen espejando cada fila
+SUBEN_PIRAMIDES:		; Sube las piramides del desierto, una fila por umbral
+	ld hl,07371h		;731d   ; sube las piramides del desierto segun lo que queda de etapa
 	ld de,0e06bh		;7320
 	ld a,(de)			;7323   ; lee el byte de la fila a espejar
 	call HL_MAS_A		;7324
@@ -4084,22 +4084,35 @@ DIBUJA_EYECATCH:		; Compone una imagen simetrica espejando cada fila
 	pop de			;733f
 	ld hl,02da8h		;7340   ; y la derecha, espejada
 	ld b,010h		;7343
-EYECATCH_BUCLE:
+PIRAMIDES_ESPEJO:
 	ld a,(de)			;7345
 	call INVIERTE_BITS		;7346   ; espeja la fila con INVIERTE_BITS para la mitad derecha
 	call 0004dh		;7349   ; BIOS WRTVRM - Writes data in VRAM
 	inc de			;734c
 	inc hl			;734d
-	djnz EYECATCH_BUCLE		;734e
+	djnz PIRAMIDES_ESPEJO		;734e
 	ret			;7350
 
 ; ----------------------------------------------------------------------
-; DATOS tablas_carretera: Datos del eyecatch y tablas de forma de la carretera
-;   0x7351..0x767c  (811 bytes)
-DATA_tablas_carretera:
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 7351  ................
-	defb 001h,003h,007h,00fh,01fh,03fh,07fh,0ffh,0ffh,0ffh,0ffh,0ffh,0ffh,0ffh,0ffh,0ffh	; 7361  .....?..........
+; DATOS piramide_ventana: Ventana deslizante de la piramide: 16 ceros y el
+;   triangulo
+;   0x7351..0x7371  (32 bytes)
+DATA_piramide_ventana:
+	defb 000h,000h,000h,000h,000h,000h,000h,000h	; 7351  ........
+	defb 000h,000h,000h,000h,000h,000h,000h,000h	; 7359  ........
+	defb 001h,003h,007h,00fh,01fh,03fh,07fh,0ffh	; 7361  .....?..
+	defb 0ffh,0ffh,0ffh,0ffh,0ffh,0ffh,0ffh,0ffh	; 7369  ........
+
+; ----------------------------------------------------------------------
+; DATOS piramide_umbrales: Umbral de 0xE071 que abre cada una de las 16 filas
+;   0x7371..0x7381  (16 bytes)
+DATA_piramide_umbrales:
 	defb 034h,02ch,026h,020h,01ch,018h,014h,010h,00eh,00ch,00ah,008h,007h,006h,005h,004h	; 7371  4,& ............
+
+; ----------------------------------------------------------------------
+; DATOS tablas_carretera: Tabla de anchos y tablas de forma de la carretera
+;   0x7381..0x767c  (763 bytes)
+DATA_tablas_carretera:
 	defb 0ffh,00ah,000h,018h,002h,022h,010h,01ah,026h,006h,024h,02ah,004h,014h,0a8h,030h	; 7381  ....."..&.$*...0
 	defb 088h,070h,098h,018h,088h,058h,088h,038h,0a0h,060h,088h,028h,0a0h,028h,088h,048h	; 7391  .p...X.8.`.(.(.H
 	defb 098h,020h,098h,058h,098h,038h,0a8h,010h,088h,058h,088h,058h,088h,060h,088h,020h	; 73a1  . .X.8...X.X.`. 

@@ -42,7 +42,7 @@ agreement is what proves the reading:
 | 5 | 0x5B68 | 0x08 | night: black sky, magenta stars |
 | 7 | 0x5D5B | 0x10 | storm: grey sky **and a grey border** |
 | 8 | 0x51B8 | 0x40 | stage 1 plus a snowy mountain range |
-| 11 | 0x5D86 | 0x20 | desert: ochre ground, pale sky |
+| 11 | 0x5D86 | 0x20 | desert: ochre ground, and three pyramids that rise near the end |
 | 12 | 0x5E94 | 0x08 | night: dark blue sky, white stars |
 
 0x51B8 is the generic composer: inside it, at 0x51DA, it tests for 0x40 and only
@@ -65,6 +65,31 @@ sub-positions inside one cell, so each star scrolls at pixel precision, and when
 the cycle closes the cell itself steps one column. The delay between steps comes
 from the car's speed (table at 0x7215, index = speed >> 5): seventeen frames
 stopped, ten flat out. Bit 2 of 0xE075 flips the direction.
+
+## The pyramids rise one row at a time
+
+Stage 11 is the one whose background theNestruo remembered as *appearing line by
+line*, and that is exactly how it is drawn. In every other stage 0x707A scrolls
+the road stripes; when bit 5 of 0xE061 is set — the desert — it jumps to 0x731D
+instead.
+
+That routine keeps a row counter at 0xE06B and does nothing at all until 0xE071,
+what is left of the stage, hits **exactly** the threshold the table at 0x7371
+holds for the current row: `34 2C 26 20 1C 18 14 10 0E 0C 0A 08 07 06 05 04`.
+The gaps close as you get nearer, so the pyramids grow faster the closer the
+finish is.
+
+Each time one fires, sixteen bytes are copied into the pattern table from a
+**sliding window** over 0x7351 that advances one byte per row. What it slides
+over is sixteen zeros followed by `01 03 07 0F 1F 3F 7F FF` and then solid
+`FF`: starting inside the zeros and sliding into the triangle is what makes the
+shape climb a row at a time. The left half is block-copied; the right half is
+written byte by byte through INVIERTE_BITS, so it is the same triangle
+**mirrored** — and two mirrored triangles are a pyramid.
+
+Driven through its sixteen steps in openMSX, the four tiles end up exactly as
+the ROM predicts: 0xB3 = `01 03 07 0F 1F 3F 7F FF`, 0xB4 solid, 0xB5 =
+`80 C0 E0 F0 F8 FC FE FF` (0xB3 with its bits reversed) and 0xB6 solid.
 
 ## The storm stage throws lightning
 

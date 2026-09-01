@@ -44,7 +44,7 @@ es la prueba de que la lectura es la buena:
 | 5 | 0x5B68 | 0x08 | noche: cielo negro, estrellas magenta |
 | 7 | 0x5D5B | 0x10 | tormenta: cielo gris **y borde gris** |
 | 8 | 0x51B8 | 0x40 | la etapa 1 más una cordillera nevada |
-| 11 | 0x5D86 | 0x20 | desierto: suelo ocre, cielo pálido |
+| 11 | 0x5D86 | 0x20 | desierto: suelo ocre, y tres pirámides que suben al final |
 | 12 | 0x5E94 | 0x08 | noche: cielo azul oscuro, estrellas blancas |
 
 0x51B8 es el compositor genérico: dentro, en 0x51DA, mira si vale 0x40 y sólo
@@ -67,6 +67,31 @@ corre a precisión de píxel, y al cerrarse el ciclo la casilla salta una column
 El retardo entre pasos sale de la velocidad del coche (tabla de 0x7215, índice =
 velocidad >> 5): diecisiete cuadros parado, diez a tope. El bit 2 de 0xE075 le
 cambia el sentido.
+
+## Las pirámides suben de fila en fila
+
+La etapa 11 es aquella cuyo fondo theNestruo recordaba *apareciendo línea a
+línea*, y así se dibuja exactamente. En todas las demás etapas 0x707A desplaza
+las rayas de la carretera; cuando el bit 5 de 0xE061 está puesto —el desierto—
+salta a 0x731D en su lugar.
+
+Esa rutina lleva un contador de fila en 0xE06B y no hace absolutamente nada
+hasta que 0xE071, lo que queda de etapa, vale **exactamente** el umbral que la
+tabla de 0x7371 guarda para la fila que toca: `34 2C 26 20 1C 18 14 10 0E 0C 0A
+08 07 06 05 04`. Los huecos se van cerrando conforme te acercas, así que las
+pirámides crecen más deprisa cuanto más cerca está la meta.
+
+Cada vez que uno se cumple se copian dieciséis bytes a la tabla de patrones
+desde una **ventana deslizante** sobre 0x7351 que avanza un byte por fila. Por
+lo que desliza es dieciséis ceros seguidos de `01 03 07 0F 1F 3F 7F FF` y luego
+`FF` macizo: empezar dentro de los ceros e ir entrando en el triángulo es lo que
+hace que la forma suba de fila en fila. La mitad izquierda va de un bloque; la
+derecha se escribe byte a byte pasando por INVIERTE_BITS, o sea el mismo
+triángulo **espejado** —y dos triángulos espejados son una pirámide—.
+
+Llevada a mano por sus dieciséis pasos en openMSX, los cuatro tiles quedan
+exactamente como dice la ROM: 0xB3 = `01 03 07 0F 1F 3F 7F FF`, 0xB4 macizo,
+0xB5 = `80 C0 E0 F0 F8 FC FE FF` (0xB3 con los bits del revés) y 0xB6 macizo.
 
 ## La etapa de tormenta echa rayos
 
