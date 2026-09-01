@@ -3007,8 +3007,8 @@ GIRO_A_INDICE:		; Convierte el giro en un indice 0..7
 CONTROL_ACELERADOR:		; Lee acelerador y freno y ajusta la velocidad
 	call CAMBIA_MARCHA		;6940   ; lee acelerador y freno y ajusta la velocidad
 	ld a,(0e00ah)		;6943   ; lee los mandos (0xE00A)
-	and 001h		;6946   ; aisla el bit del acelerador
-	jp nz,ACELERA_A_FONDO		;6948   ; a fondo si esta pulsado
+	and 001h		;6946   ; aisla el bit 0, que es el FRENO (medido en el emulador)
+	jp nz,PISA_FRENO		;6948   ; con el freno pisado se va a restar velocidad
 	ld hl,(0e08bh)		;694b
 	ld a,l			;694e
 	or h			;694f
@@ -3016,8 +3016,8 @@ CONTROL_ACELERADOR:		; Lee acelerador y freno y ajusta la velocidad
 	call ACELERA		;6951
 	jp DIBUJA_VELOCIMETRO		;6954
 ACELERA:		; Sube la velocidad 0xE085 hasta su tope
-	ld a,(0e00ah)		;6957   ; sube 0xE085 con el tope de la ficha del canal
-	and 010h		;695a   ; aisla el bit del freno
+	ld a,(0e00ah)		;6957   ; sube 0xE085 hasta el tope que marca la marcha
+	and 010h		;695a   ; aisla el bit 4, que es el ACELERADOR (medido en el emulador)
 	jr z,DECELERA_ROCE		;695c   ; sin acelerar, roza
 	ld hl,0e085h		;695e   ; apunta a la velocidad
 	ld a,(hl)			;6961   ; el tope depende de la marcha (0xE086)
@@ -3092,20 +3092,20 @@ DATA_tabla_revoluciones:
 ; ======================================================================
 
 
-ACELERA_A_FONDO:		; Acelerador a tope: sube velocidad y ruge el motor
-	ld a,(0e085h)		;69c6   ; acelera a fondo y hace rugir el motor
+PISA_FRENO:		; Freno pisado: arranca su sonido y resta velocidad
+	ld a,(0e085h)		;69c6   ; con el freno pisado, suena y frena; parado no hace nada
 	or a			;69c9   ; comprueba
 	ret z			;69ca   ; sin velocidad no acelera
 	ld a,(0e009h)		;69cb   ; lee el volante (0xE009)
 	and 001h		;69ce   ; aisla el bit
-	jr nz,ACELERA_SONIDO		;69d0
+	jr nz,FRENO_SONIDO		;69d0
 	ld a,(0e02ch)		;69d2
 	or a			;69d5
 	jr nz,DIBUJA_VELOCIMETRO_2		;69d6
 	ld a,(0e085h)		;69d8
 	cp 050h		;69db
 	jr c,DIBUJA_VELOCIMETRO_2		;69dd
-ACELERA_SONIDO:
+FRENO_SONIDO:
 	ld a,046h		;69df
 	call ARRANCA_SONIDO		;69e1
 DIBUJA_VELOCIMETRO_2:
@@ -4215,7 +4215,7 @@ DATA_graficos_carretera:
 	defb 04ah,04ah,048h,04ah,04ah,000h,0c0h,0c6h,043h,04ah,042h,04ah,04ah,04ah,046h,000h	; 795c  JJHJJ...CJBJJJF.
 
 ; ======================================================================
-; CODIGO 0x796c..0x7b11  (421 bytes)
+; CODIGO 0x796c..0x7b30  (452 bytes)
 ; ======================================================================
 
 
@@ -4264,7 +4264,7 @@ ACTUALIZA_RIVALES_79BB:
 	add a,c			;79c2
 	ld (0e09ch),a		;79c3
 	ld a,0c9h		;79c6
-	ld (06957h),a		;79c8   ; desactiva la aceleracion tras un choque (0x6957 = ret)
+	ld (06957h),a		;79c8   ; desactiva el acelerador tras un choque (0x6957 = ret)
 	ret			;79cb
 ACTUALIZA_RIVAL:		; Un rival: avanza, escala por profundidad y colisiona
 	ld a,(0e09fh)		;79cc   ; avanza un rival, lo escala y mira el choque
@@ -4310,7 +4310,7 @@ RIVAL_COLISION:
 	jp c,RIVAL_CERCA		;7a08
 	cp 038h		;7a0b
 	jp c,RIVAL_MEDIO		;7a0d
-	ld de,07b11h		;7a10
+	ld de,RIVAL_SIGUE_NIVEL_1		;7a10
 	push de			;7a13
 	push bc			;7a14
 	call DETECTA_CHOQUE		;7a15
@@ -4441,7 +4441,7 @@ RIVAL_4_7AC6:
 	ld (hl),a			;7acf
 	ret			;7ad0
 RIVAL_MEDIO:
-	ld de,07b1bh		;7ad1   ; dibuja el rival a media distancia
+	ld de,RIVAL_SIGUE_NIVEL_2		;7ad1   ; dibuja el rival a media distancia
 	push de			;7ad4
 	ld a,b			;7ad5
 	ld b,000h		;7ad6
@@ -4475,37 +4475,19 @@ RIVAL_CERCA:
 	or a			;7b0a
 	ret z			;7b0b
 	dec a			;7b0c
-	jr z,$+10		;7b0d
-	jr $+18		;7b0f
-
-; ----------------------------------------------------------------------
-; DATOS tabla_rival_a: Cabecera de sprite de rival
-;   0x7b11..0x7b17  (6 bytes)
-DATA_tabla_rival_a:
-	defb 03ah,09eh,0e0h	; 7b11
-	defb 0feh,001h,0c0h	; 7b14
-
-; ======================================================================
-; CODIGO 0x7b17..0x7b1b  (4 bytes)
-; ======================================================================
-
-
+	jr z,DATA_tabla_rival_a_7B17		;7b0d
+	jr CHOCA_RIVAL		;7b0f
+RIVAL_SIGUE_NIVEL_1:		; Continuacion empujada en 0x7A10: solo sigue si 0xE09E vale 1
+	ld a,(0e09eh)		;7b11   ; empujada como retorno en 0x7A10, no es destino de ningun salto
+	cp 001h		;7b14   ; solo sigue con el nivel de cercania 1
+	ret nz			;7b16
 DATA_tabla_rival_a_7B17:
 	ld b,003h		;7b17
-	jr $-55		;7b19
-
-; ----------------------------------------------------------------------
-; DATOS tabla_rival_b: Cabecera de sprite de rival
-;   0x7b1b..0x7b21  (6 bytes)
-DATA_tabla_rival_b:
-	defb 03ah,09eh,0e0h	; 7b1b
-	defb 0feh,002h,0c0h	; 7b1e
-
-; ======================================================================
-; CODIGO 0x7b21..0x7b30  (15 bytes)
-; ======================================================================
-
-
+	jr RIVAL_MEDIO_7AE2		;7b19
+RIVAL_SIGUE_NIVEL_2:		; Continuacion empujada en 0x7AD1: solo sigue si 0xE09E vale 2
+	ld a,(0e09eh)		;7b1b   ; empujada como retorno en 0x7AD1, no es destino de ningun salto
+	cp 002h		;7b1e   ; solo sigue con el nivel de cercania 2
+	ret nz			;7b20
 CHOCA_RIVAL:		; Resuelve el choque contra un rival
 	ld a,0e0h		;7b21   ; resuelve el choque contra el rival
 	ld (ix+000h),a		;7b23

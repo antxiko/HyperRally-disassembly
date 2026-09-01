@@ -853,11 +853,11 @@ C 0x6937 convierte el giro en un indice de 0 a 7
 L 0x6940 CONTROL_ACELERADOR  Lee acelerador y freno y ajusta la velocidad
 C 0x6940 lee acelerador y freno y ajusta la velocidad
 C 0x6943 lee los mandos (0xE00A)
-C 0x6946 aisla el bit del acelerador
-C 0x6948 a fondo si esta pulsado
+C 0x6946 aisla el bit 0, que es el FRENO (medido en el emulador)
+C 0x6948 con el freno pisado se va a restar velocidad
 L 0x6957 ACELERA  Sube la velocidad 0xE085 hasta su tope
-C 0x6957 sube 0xE085 con el tope de la ficha del canal
-C 0x695a aisla el bit del freno
+C 0x6957 sube 0xE085 hasta el tope que marca la marcha
+C 0x695a aisla el bit 4, que es el ACELERADOR (medido en el emulador)
 C 0x695c sin acelerar, roza
 C 0x695e apunta a la velocidad
 C 0x6961 el tope depende de la marcha (0xE086)
@@ -883,13 +883,13 @@ C 0x699c dos veces
 L 0x69ac REV_INDEXA
 D 0x69b1 0x69c6 tabla_revoluciones  Nivel de motor por tramo de velocidad
 F 0x69b1 11
-L 0x69c6 ACELERA_A_FONDO  Acelerador a tope: sube velocidad y ruge el motor
-C 0x69c6 acelera a fondo y hace rugir el motor
+L 0x69c6 PISA_FRENO  Freno pisado: arranca su sonido y resta velocidad
+C 0x69c6 con el freno pisado, suena y frena; parado no hace nada
 C 0x69c9 comprueba
 C 0x69ca sin velocidad no acelera
 C 0x69cb lee el volante (0xE009)
 C 0x69ce aisla el bit
-L 0x69df ACELERA_SONIDO
+L 0x69df FRENO_SONIDO
 L 0x69e4 DIBUJA_VELOCIMETRO_2
 L 0x69e7 DIBUJA_VELOCIMETRO  Escribe la cifra de velocidad (km/h) en la VRAM
 C 0x69e7 lee la velocidad
@@ -1110,7 +1110,7 @@ C 0x799b recoloca los sprites tras el barrido
 L 0x79a9 ACTUALIZA_RIVALES_79A9
 C 0x79a9 elige el color aleatorio del proximo rival
 L 0x79bb ACTUALIZA_RIVALES_79BB
-C 0x79c8 desactiva la aceleracion tras un choque (0x6957 = ret)
+C 0x79c8 desactiva el acelerador tras un choque (0x6957 = ret)
 L 0x79cc ACTUALIZA_RIVAL  Un rival: avanza, escala por profundidad y colisiona
 C 0x79cc avanza un rival, lo escala y mira el choque
 L 0x79d8 RIVAL_ESCALA
@@ -1154,11 +1154,13 @@ C 0x7ae2 escribe el rival mediano
 C 0x7ae5 dobla el indice del rival mediano
 L 0x7b01 RIVAL_CERCA
 C 0x7b01 dibuja el rival lejano (pequeno)
-D 0x7b11 0x7b17 tabla_rival_a  Cabecera de sprite de rival
-F 0x7b11 3
 L 0x7b17 DATA_tabla_rival_a_7B17
-D 0x7b1b 0x7b21 tabla_rival_b  Cabecera de sprite de rival
-F 0x7b1b 3
+L 0x7b11 RIVAL_SIGUE_NIVEL_1  Continuacion empujada en 0x7A10: solo sigue si 0xE09E vale 1
+C 0x7b11 empujada como retorno en 0x7A10, no es destino de ningun salto
+C 0x7b14 solo sigue con el nivel de cercania 1
+L 0x7b1b RIVAL_SIGUE_NIVEL_2  Continuacion empujada en 0x7AD1: solo sigue si 0xE09E vale 2
+C 0x7b1b empujada como retorno en 0x7AD1, no es destino de ningun salto
+C 0x7b1e solo sigue con el nivel de cercania 2
 L 0x7b21 CHOCA_RIVAL  Resuelve el choque contra un rival
 C 0x7b21 resuelve el choque contra el rival
 D 0x7b30 0x7b42 tabla_rival_c  Sprites de rival por posicion

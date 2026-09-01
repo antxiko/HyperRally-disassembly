@@ -18,13 +18,13 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from estilo_web import ESTILO                                   # noqa: E402
 
 # Las cifras salen de contar sobre el listado generado, no de escribirlas a ojo:
-# 16384 = 6452 + 9932, que es lo que imprime tools/presupuesto.py (make sanity).
+# 16384 = 6464 + 9920, que es lo que imprime tools/presupuesto.py (make sanity).
 # RUTINAS son las etiquetas de codigo con nombre propio, las mismas que cuenta
 # el .notes con su directiva L. ETAPAS es el rally de doce etapas (0xE060 de 1
 # a 0x0C).
-CODIGO = 6452
-DATOS = 9932
-RUTINAS = 429
+CODIGO = 6464
+DATOS = 9920
+RUTINAS = 431
 ETAPAS = 12
 
 

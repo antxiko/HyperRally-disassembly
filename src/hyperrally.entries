@@ -12,6 +12,14 @@
 # rastro estatico, o es codigo muerto. Decodifica limpio hasta el ret de 0x4DE9.
 0x4dcc
 
+# Continuaciones de RIVAL_LEJOS empujadas con `ld de,NN / push de`: no son
+# destinos de ningun salto, se llega a ellas por el `ret` de la rutina que se
+# llama justo despues, asi que el trazado estatico no puede verlas y quedaban
+# declaradas como datos. Las dos empiezan por `3A 9E E0` = ld a,(0xE09E), que
+# es el nivel de cercania del rival.
+0x7b11  # empujada en 0x7A10, antes de call DETECTA_CHOQUE
+0x7b1b  # empujada en 0x7AD1, antes del dibujo del rival a media distancia
+
 # === AUTO destinos indirectos (tablas 0x407F + push/ret) ===
 0x40bc  # tabla
 0x40f5  # tabla
