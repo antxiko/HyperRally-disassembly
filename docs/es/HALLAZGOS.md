@@ -51,6 +51,23 @@ es la prueba de que la lectura es la buena:
 entonces añade las montañas; por eso la etapa 8 puede compartirlo. Y el
 compositor de la etapa 12 llama al de la 5, la otra nocturna.
 
+![Las doce etapas](../imagenes/etapas.png)
+
+Los doce fondos de arriba **no son capturas**: cada uno se monta ejecutando en
+Python el compositor que le toca, con el mismo `DESC_DOBLE` (0x44B0) y el mismo
+`PINTA_TIRA` (0x4529) del cartucho, más las rutinas de horizonte, decorado y
+carretera. Y hay control: cotejados contra doce volcados de la VRAM que openMSX
+tenía delante, **las doce cuadran**. Lo único que se deja fuera del cotejo es lo
+que el juego repinta cuadro a cuadro —el rótulo READY, la raya central de la
+carretera, la franja del marcador y los tiles del cuentakilómetros—, y eso está
+escrito en el propio test.
+
+Las huellas también confirman el reparto: la **1 y la 6**, la **2 y la 10** y la
+**3 y la 9** salen byte a byte iguales, porque comparten compositor *y* 0xE061.
+La 1 y la 8 comparten compositor pero no parámetro, y no se parecen: la 8 es la
+que lleva la cordillera, porque con 0xE061 = 0x40 el propio FONDO_ETAPA_1 se
+desvía a la cola de FONDO_ETAPA_3 (0x51DA).
+
 ## No hay etapa acuática: es un campo de estrellas
 
 Una versión anterior de esta página decía que 0xE061 = 8 marcaba una etapa
@@ -92,6 +109,14 @@ triángulo **espejado** —y dos triángulos espejados son una pirámide—.
 Llevada a mano por sus dieciséis pasos en openMSX, los cuatro tiles quedan
 exactamente como dice la ROM: 0xB3 = `01 03 07 0F 1F 3F 7F FF`, 0xB4 macizo,
 0xB5 = `80 C0 E0 F0 F8 FC FE FF` (0xB3 con los bits del revés) y 0xB6 macizo.
+
+![Pirámides y rayos](../imagenes/desierto_tormenta.png)
+
+Dibujadas desde la ROM, subiendo paso a paso. Y de paso se ve el otro efecto que
+va **encima** del fondo: el rayo de la tormenta, que se pinta con la tercera
+rutina de dibujo del cartucho —`PINTA_ROTULO` (0x455A), la que se copia a 0xE1C0
+y corre en la RAM— desde la fila 2. Los cuatro punteros de 0x72D2 dan **tres**
+formas distintas: la primera está repetida.
 
 ## De cerca, el rival deja de ser sprites
 

@@ -18,6 +18,10 @@ con la fuente de tools/rotulos.py.
   rival_escala.png       los veinte escalones de la tabla 0x7D94, en fila.
   rival_espejo.png       el coche de cerca, casilla a casilla: la mitad derecha
                          es la izquierda con los bits del reves.
+  etapas.png             los doce fondos, uno por etapa, con el compositor que
+                         les toca y su terreno.
+  desierto_tormenta.png  los dos efectos que van ENCIMA del fondo: la ventana
+                         deslizante de las piramides y las tres formas del rayo.
 
 Uso: escena.py <rom> <org> <destino>
 """
@@ -386,6 +390,124 @@ def dibuja_espejo(m, ruta, idioma):
     L.guardar(ruta)
 
 
+# ---------------------------------------------------------------------------
+# Los doce fondos. Que terreno tiene cada etapa no se escribe aqui: el nombre va
+# atado al parametro 0xE061, que se lee de la tabla de 0x4371 del cartucho.
+TERRENOS = {
+    0x00: ("DIA", "DAY"),
+    0x01: ("TUNEL", "TUNNEL"),
+    0x02: ("NIEVE", "SNOW"),
+    0x06: ("NIEVE, CIELO A BANDAS", "SNOW, BANDED SKY"),
+    0x08: ("NOCHE", "NIGHT"),
+    0x10: ("TORMENTA", "STORM"),
+    0x20: ("DESIERTO", "DESERT"),
+    0x40: ("DIA CON CORDILLERA", "DAY WITH A MOUNTAIN RANGE"),
+}
+# La 11 con las piramides ya subidas y la 7 con un rayo cayendo: son las dos
+# cosas que en el juego pasan SOBRE el fondo y que sin ellas no se reconocen.
+EXTRAS = {11: dict(piramides=15), 7: dict(rayo=(1, 0))}
+
+
+def dibuja_etapas(m, ruta, idioma):
+    """Los doce fondos, cada uno con su compositor y su terreno."""
+    esc, f0, f1 = 1, 3, 22
+    cw, ch = 256 * esc, (f1 - f0 + 1) * 8 * esc
+    cols, sep, izq, arr = 4, 14, 22, 108
+    alto_celda = ch + 34
+    L = Lienzo(izq * 2 + cols * cw + (cols - 1) * sep,
+               arr + 3 * alto_celda + 46)
+    for etapa in range(1, 13):
+        m2 = C.pantalla(m.rom, m.org, etapa, **EXTRAS.get(etapa, {}))
+        w, h, px = C.pinta_vram(m2.vram, esc, f0, f1)
+        gx = izq + ((etapa - 1) % cols) * (cw + sep)
+        gy = arr + ((etapa - 1) // cols) * alto_celda
+        L.pega(gx, gy, w, h, px)
+        L.marco(gx - 1, gy - 1, gx + w + 1, gy + h + 1, REJA)
+        fondo = m2.rw(0x481A + (etapa - 1) * 2)
+        L.texto(gx, gy - 15, "%d" % etapa, MARCA)
+        L.texto(gx + 18, gy - 15, TERRENOS[m2.param][0 if idioma == "es" else 1],
+                TINTA)
+        L.texto(gx + w - R.ancho("0x%04X" % fondo), gy - 15,
+                "0x%04X" % fondo, FLOJO)
+    t = ("THE TWELVE STAGES, DRAWN FROM THE ROM" if idioma == "en"
+         else "LAS DOCE ETAPAS, DIBUJADAS DESDE LA ROM")
+    p = ("EIGHT BACKGROUND ROUTINES COVER THE TWELVE STAGES: THE ADDRESS UNDER "
+         "EACH ONE IS THE ROUTINE TABLE 0x481A PICKS." if idioma == "en" else
+         "OCHO RUTINAS DE FONDO CUBREN LAS DOCE ETAPAS: LA DIRECCION DE CADA "
+         "UNA ES LA QUE ELIGE LA TABLA 0x481A.")
+    p2 = ("NOT ONE CAPTURE: EACH SCREEN IS BUILT BY RUNNING THE CARTRIDGE'S OWN "
+          "DECOMPRESSORS. CHECKED AGAINST TWELVE VRAM DUMPS FROM openMSX, EVERY "
+          "ONE MATCHES CELL BY CELL." if idioma == "en" else
+          "NI UNA CAPTURA: CADA PANTALLA SE MONTA EJECUTANDO LOS DESCOMPRESORES "
+          "DEL CARTUCHO. COTEJADAS CONTRA DOCE VOLCADOS DE VRAM DE openMSX, LAS "
+          "DOCE CUADRAN CASILLA A CASILLA.")
+    L.texto(izq, 26, t, TINTA, 2)
+    L.texto(izq, 52, p, FLOJO)
+    L.texto(izq, 66, p2, FLOJO)
+    L.texto(izq, arr + 3 * alto_celda + 16,
+            "STAGE 11 IS SHOWN WITH ITS PYRAMIDS UP AND STAGE 7 WITH A BOLT "
+            "FALLING: BOTH ARE PAINTED OVER THE BACKGROUND."
+            if idioma == "en" else
+            "LA ETAPA 11 VA CON SUS PIRAMIDES YA SUBIDAS Y LA 7 CON UN RAYO "
+            "CAYENDO: LAS DOS COSAS SE PINTAN ENCIMA DEL FONDO.", FLOJO)
+    L.guardar(ruta)
+
+
+def dibuja_desierto_y_tormenta(m, ruta, idioma):
+    """Los dos efectos que se pintan encima del fondo: la ventana deslizante de
+    las piramides y las tres formas del rayo."""
+    esc = 1
+    f0, f1 = 8, 20                           # el desierto: de la franja al pie
+    r0, r1 = 2, 17                           # el rayo cae desde la fila 2
+    cw, ch = 256 * esc, (f1 - f0 + 1) * 8 * esc
+    rh = (r1 - r0 + 1) * 8 * esc
+    pasos = (0, 5, 10, 15)
+    izq, arr, sep = 22, 116, 12
+    L = Lienzo(izq * 2 + len(pasos) * cw + (len(pasos) - 1) * sep,
+               arr + ch + 46 + rh + 40)
+    for i, filas in enumerate(pasos):
+        m2 = C.pantalla(m.rom, m.org, 11, piramides=filas)
+        w, h, px = C.pinta_vram(m2.vram, esc, f0, f1)
+        gx = izq + i * (cw + sep)
+        L.pega(gx, arr, w, h, px)
+        L.marco(gx - 1, arr - 1, gx + w + 1, arr + h + 1, REJA)
+        L.texto(gx, arr - 15, ("%d ROWS UP" if idioma == "en"
+                               else "%d FILAS SUBIDAS") % filas, FLOJO)
+    y2 = arr + ch + 46
+    for i, forma in enumerate((0, 1, 3)):
+        m2 = C.pantalla(m.rom, m.org, 7, rayo=(forma, 0))
+        w, h, px = C.pinta_vram(m2.vram, esc, r0, r1)
+        gx = izq + i * (cw + sep)
+        L.pega(gx, y2, w, h, px)
+        L.marco(gx - 1, y2 - 1, gx + w + 1, y2 + h + 1, REJA)
+        L.texto(gx, y2 - 15, "0x%04X" % m2.rw(0x72D2 + forma * 2), FLOJO)
+    t = ("PYRAMIDS AND LIGHTNING" if idioma == "en"
+         else "PIRAMIDES Y RAYOS")
+    L.texto(izq, 26, t, TINTA, 2)
+    lineas = ([
+        "IN THE DESERT THE ROAD DOES NOT SCROLL: PYRAMIDS RISE INSTEAD (0x707F). AND THERE IS NO PYRAMID DRAWN",
+        "ANYWHERE — THERE IS A 32-BYTE WINDOW AT 0x7351 (SIXTEEN ZEROS, THEN THE TRIANGLE) THAT SLIDES ONE STEP",
+        "EACH TIME 0xE071 REACHES ONE OF THE SIXTEEN THRESHOLDS AT 0x7371. THE RIGHT HALF IS THE LEFT ONE THROUGH",
+        "INVERT_BITS — THE SAME TRICK AS THE RIVAL CAR.",
+    ] if idioma == "en" else [
+        "EN EL DESIERTO LA CARRETERA NO SCROLLEA: SUBEN PIRAMIDES (0x707F). Y NO HAY NINGUNA PIRAMIDE DIBUJADA",
+        "EN NINGUN SITIO: HAY UNA VENTANA DE 32 BYTES EN 0x7351 -DIECISEIS CEROS Y LUEGO EL TRIANGULO- QUE SE",
+        "DESLIZA UNA POSICION CADA VEZ QUE 0xE071 LLEGA A UNO DE LOS DIECISEIS UMBRALES DE 0x7371. LA MITAD",
+        "DERECHA ES LA IZQUIERDA PASADA POR INVIERTE_BITS, EL MISMO TRUCO DEL COCHE RIVAL.",
+    ])
+    for i, s in enumerate(lineas):
+        L.texto(izq, 48 + i * 13, s, FLOJO)
+    L.texto(izq, y2 - 32,
+            ("THREE SHAPES OF BOLT, FROM THE FOUR POINTERS AT 0x72D2 (THE FIRST "
+             "ONE TWICE), PAINTED BY PINTA_ROTULO FROM ROW 2. WHICH ONE FALLS, "
+             "AND WHERE, IS DRAWN FROM THE REFRESH REGISTER."
+             if idioma == "en" else
+             "TRES FORMAS DE RAYO, DE LOS CUATRO PUNTEROS DE 0x72D2 (EL PRIMERO "
+             "DOS VECES), PINTADAS POR PINTA_ROTULO DESDE LA FILA 2. CUAL CAE, "
+             "Y DONDE, LO SORTEA EL REGISTRO DE REFRESCO."), FLOJO)
+    L.guardar(ruta)
+
+
 def main(argv):
     if len(argv) < 4:
         print(__doc__)
@@ -402,6 +524,10 @@ def main(argv):
             destino, "rival_escala%s.png" % sufijo), idioma)
         dibuja_espejo(m, os.path.join(
             destino, "rival_espejo%s.png" % sufijo), idioma)
+        dibuja_etapas(m, os.path.join(
+            destino, "etapas%s.png" % sufijo), idioma)
+        dibuja_desierto_y_tormenta(m, os.path.join(
+            destino, "desierto_tormenta%s.png" % sufijo), idioma)
     return 0
 
 

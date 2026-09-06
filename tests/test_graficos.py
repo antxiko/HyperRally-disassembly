@@ -150,5 +150,111 @@ class TestContraElEmulador(unittest.TestCase):
                               for t in range(0x24, 0x2F))), VRAM_COLORES)
 
 
+# Las doce etapas, medidas UNA vez sobre los volcados de openMSX de
+# work/omsx/vram_etapaN.bin. Cada huella es el sha256 de todo lo que el flujo
+# del cartucho escribe en la VRAM MENOS lo que el juego repinta cuadro a cuadro
+# (ver `repintado`), que es lo unico que puede haber cambiado entre que la
+# pantalla se monto y el piloto volco la VRAM.
+VRAM_ETAPAS = {
+    1: "117eff29253025987a9d3f840e29495a51ef5aade8e6cb591be4353b26e35183",
+    2: "4bc9c61ebcdf56c6ba7a5ea0f32840c8e0a448dd9562d8d4e047f93cb1aee055",
+    3: "33d8cae86e08f95e563f037bc5ff0e88ab6f07d326a625f9ae5bf25637686db5",
+    4: "21f3df0e90b477127d8ee0c6cc317680ea47a02eb8f9d7d07e220fb48f4498d5",
+    5: "6822169e5e29b7f9083ef2554124eb3c9fe301756d6fdcf1a1540863d1af7139",
+    6: "117eff29253025987a9d3f840e29495a51ef5aade8e6cb591be4353b26e35183",
+    7: "12d1e70da6de13b859b84dfe4476afb5eab4036cbddc43bf76588c1706b15703",
+    8: "ad26c9ef3cb2e5b6adbd1b51d754857d6e8e6efa182a8cb0cae4c6b12edfedc8",
+    9: "33d8cae86e08f95e563f037bc5ff0e88ab6f07d326a625f9ae5bf25637686db5",
+    10: "4bc9c61ebcdf56c6ba7a5ea0f32840c8e0a448dd9562d8d4e047f93cb1aee055",
+    11: "b45c3ae2e1731ee45042e9d9411dc093778223be9f7f5a391c5738c272e8ebba",
+    12: "5893f8df5c4c3e5f69efaf318221bcd03a709d70e8a58a517a57addd3e7f7c8d",
+}
+
+
+def repintado(a):
+    """Lo unico que se deja fuera del cotejo, y por que: el rotulo READY (que lo
+    pinta otra rutina), la raya central de la carretera (que se mueve sola), la
+    franja del marcador y los tiles del cuentakilometros."""
+    if 0x3800 <= a < 0x3B00:
+        f, c = (a - 0x3800) // 32, (a - 0x3800) % 32
+        return (f == 7 and 14 <= c <= 18) or (c == 15 and f >= 13)
+    if a < 0x1800 or 0x2000 <= a < 0x3800:
+        o = a % 0x800
+        return 0x80 <= o < 0x2F8 or 0xD0 <= o < 0xF0
+    return False
+
+
+def huella(m):
+    return hashlib.sha256(bytes(
+        m.vram[a] for a in range(0x4000)
+        if m.escrito[a] and not repintado(a))).hexdigest()
+
+
+class TestLasDoceEtapas(unittest.TestCase):
+    """Los ocho compositores de fondo, contra los doce volcados del emulador."""
+
+    @classmethod
+    def setUpClass(cls):
+        with open(ROM, "rb") as f:
+            cls.rom = f.read()
+
+    def test_cada_etapa_cuadra_con_la_vram_del_emulador(self):
+        for etapa, sha in VRAM_ETAPAS.items():
+            # El piloto que saco los volcados cambia la etapa DESPUES de que
+            # CARGA_CARRETERA haya corrido, asi que hay que montarla igual.
+            m = C.pantalla(self.rom, 0x4000, etapa, etapa_previa=1)
+            self.assertEqual(huella(m), sha, "la etapa %d no cuadra" % etapa)
+
+    def test_los_doce_fondos_los_cubren_ocho_rutinas(self):
+        """La tabla 0x481A, leida de la ROM: doce entradas y ocho destinos."""
+        m = C.Maquina(self.rom)
+        destinos = [m.rw(0x481A + i * 2) for i in range(12)]
+        self.assertEqual(len(set(destinos)), 8)
+        for d in destinos:
+            self.assertIn(d, C.FONDOS, "el fondo 0x%04X no esta portado" % d)
+
+    def test_las_etapas_del_mismo_fondo_y_parametro_salen_iguales(self):
+        """1 y 6, 2 y 10, 3 y 9: mismo compositor y mismo 0xE061."""
+        for a, b in ((1, 6), (2, 10), (3, 9)):
+            self.assertEqual(VRAM_ETAPAS[a], VRAM_ETAPAS[b])
+        # y las que comparten compositor pero NO parametro no salen iguales
+        self.assertNotEqual(VRAM_ETAPAS[1], VRAM_ETAPAS[8])
+
+    def test_ninguna_etapa_se_queda_sin_dibujar(self):
+        """Doce pantallas distintas de verdad: nueve huellas para doce etapas."""
+        self.assertEqual(len(set(VRAM_ETAPAS.values())), 9)
+
+    def test_la_piramide_es_media_y_se_refleja(self):
+        """SUBEN_PIRAMIDES (0x731D): el patron de la derecha (0x2DA8) es el de
+        la izquierda (0x2D98) con los bits del reves, como el coche rival."""
+        m = C.pantalla(self.rom, 0x4000, 11, piramides=15)
+        izq = m.vram[0x2D98:0x2DA8]
+        der = m.vram[0x2DA8:0x2DB8]
+        self.assertEqual(bytes(C.invierte(x) for x in izq), bytes(der))
+
+    def test_la_piramide_sube_y_no_baja(self):
+        """Cada umbral de 0x7371 abre una fila mas, y ninguna se cierra."""
+        antes = 0
+        for filas in range(0, 16):
+            m = C.pantalla(self.rom, 0x4000, 11, piramides=filas)
+            puestos = sum(bin(x).count("1") for x in m.vram[0x2D98:0x2DA8])
+            self.assertGreaterEqual(puestos, antes)
+            antes = puestos
+        self.assertGreater(antes, 0)
+
+    def test_el_rayo_tiene_tres_formas(self):
+        """Los cuatro punteros de 0x72D2 dan tres rayos distintos: el primero
+        sale dos veces."""
+        m = C.Maquina(self.rom)
+        p = [m.rw(0x72D2 + i * 2) for i in range(4)]
+        self.assertEqual(len(set(p)), 3)
+        self.assertEqual(p[0], p[2])
+        pintados = set()
+        for forma in range(4):
+            v = C.pantalla(self.rom, 0x4000, 7, rayo=(forma, 0))
+            pintados.add(bytes(v.vram[0x3840:0x3900]))
+        self.assertEqual(len(pintados), 3)
+
+
 if __name__ == "__main__":
     unittest.main()

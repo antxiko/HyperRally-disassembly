@@ -165,6 +165,14 @@ HALLAZGOS = {
          "velocidad: forzado a 0 te los comes a todos, forzado a 255 se te "
          "escapan todos. La cuenta rehecha en Python reproduce "
          "<b>102 de 102</b> casos leídos dentro de la propia rutina.</p>"),
+        ("No hay ninguna pirámide dibujada en la ROM",
+         "<p>En el desierto la carretera <b>no scrollea</b>: 0x707F desvía el "
+         "scroll a SUBEN_PIRAMIDES. Y no hay una pirámide guardada en ninguna "
+         "parte: hay una <b>ventana de 32 bytes</b> en 0x7351 —dieciséis ceros "
+         "y luego el triángulo— que se desliza <b>una posición</b> cada vez que "
+         "0xE071 llega a uno de los dieciséis umbrales de 0x7371. La mitad "
+         "derecha del patrón es la izquierda pasada por INVIERTE_BITS, el mismo "
+         "truco del coche rival.</p>"),
         ("Un rival que se acerca cambia de material por el camino",
          "<p>No crece: <b>deja de ser sprites y pasa a ser pantalla</b>. La "
          "tabla 0x7D94 da veinte escalones, y los dos bits bajos de cada patrón "
@@ -230,6 +238,14 @@ HALLAZGOS = {
          "to 0 you eat all of them, forced to 255 they all get away. The "
          "arithmetic redone in Python reproduces <b>102 of 102</b> cases read "
          "inside the routine itself.</p>"),
+        ("There is no pyramid drawn anywhere in the ROM",
+         "<p>In the desert the road <b>does not scroll</b>: 0x707F diverts the "
+         "scroll to SUBEN_PIRAMIDES. And there is no pyramid stored anywhere: "
+         "there is a <b>32-byte window</b> at 0x7351 —sixteen zeros, then the "
+         "triangle— that slides <b>one step</b> each time 0xE071 reaches one of "
+         "the sixteen thresholds at 0x7371. The right half of the pattern is "
+         "the left one through INVIERTE_BITS, the same trick as the rival "
+         "car.</p>"),
         ("An opponent coming closer changes material on the way",
          "<p>It does not grow: <b>it stops being sprites and becomes screen</b>. "
          "Table 0x7D94 gives twenty steps, and the two low bits of each pattern "
@@ -301,6 +317,28 @@ GALERIA = [
      "height on screen. The two low bits of that pattern say how many sprites "
      "light up, because 0x7A73 switches off the spare ones; the last one is not "
      "a sprite any more, it is four by three tiles"),
+    ("etapas.png",
+     "Las doce etapas del rally, montadas ejecutando los descompresores del "
+     "cartucho. Ocho rutinas de fondo cubren las doce, y la dirección de cada "
+     "una es la que elige la tabla 0x481A. Cotejadas contra doce volcados de "
+     "VRAM de openMSX, las doce cuadran: lo único que baila es lo que el juego "
+     "repinta cuadro a cuadro",
+     "The twelve stages of the rally, built by running the cartridge's own "
+     "decompressors. Eight background routines cover the twelve, and the "
+     "address under each one is what table 0x481A picks. Checked against twelve "
+     "VRAM dumps from openMSX, all twelve match: the only thing that moves is "
+     "what the game repaints every frame"),
+    ("desierto_tormenta.png",
+     "Los dos efectos que van encima del fondo. En el desierto la carretera no "
+     "scrollea: suben pirámides, y no hay ninguna pirámide dibujada en la ROM "
+     "—hay una ventana de 32 bytes en 0x7351 que se desliza una posición por "
+     "umbral—. Y en la tormenta caen tres formas de rayo, pintadas por "
+     "PINTA_ROTULO desde la fila 2",
+     "The two effects painted over the background. In the desert the road does "
+     "not scroll: pyramids rise, and there is no pyramid drawn anywhere in the "
+     "ROM —there is a 32-byte window at 0x7351 that slides one step per "
+     "threshold—. And in the storm three shapes of bolt fall, painted by "
+     "PINTA_ROTULO from row 2"),
     ("rival_espejo.png",
      "El rival de cerca y sus doce casillas una a una. Los doce números están "
      "literales en la ROM en 0x7BF3, pero los patrones sólo a medias: 0x2A es "

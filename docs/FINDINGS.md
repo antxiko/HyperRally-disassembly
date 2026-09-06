@@ -49,6 +49,23 @@ agreement is what proves the reading:
 then adds the mountains, which is how stage 8 can share it. And stage 12's
 composer calls stage 5's — the other night stage.
 
+![The twelve stages](imagenes/etapas_en.png)
+
+The twelve backgrounds above are **not captures**: each one is built by running
+in Python the composer that stage gets, with the cartridge's own `DESC_DOBLE`
+(0x44B0) and `PINTA_TIRA` (0x4529), plus the horizon, scenery and road routines.
+And there is a control: checked against twelve dumps of the VRAM openMSX had in
+front of it, **all twelve match**. The only thing left out of the comparison is
+what the game repaints every frame —the READY sign, the centre line of the road,
+the scoreboard strip and the odometer tiles— and that is written into the test
+itself.
+
+The hashes also confirm the split: **1 and 6**, **2 and 10** and **3 and 9** come
+out byte for byte identical, because they share a composer *and* an 0xE061. 1 and
+8 share a composer but not the parameter, and they look nothing alike: 8 is the
+one with the mountain range, because with 0xE061 = 0x40 FONDO_ETAPA_1 itself
+diverts into the tail of FONDO_ETAPA_3 (0x51DA).
+
 ## There is no water stage: it is a starfield
 
 An earlier version of this page said that 0xE061 = 8 meant the stage was run on
@@ -90,6 +107,14 @@ written byte by byte through INVIERTE_BITS, so it is the same triangle
 Driven through its sixteen steps in openMSX, the four tiles end up exactly as
 the ROM predicts: 0xB3 = `01 03 07 0F 1F 3F 7F FF`, 0xB4 solid, 0xB5 =
 `80 C0 E0 F0 F8 FC FE FF` (0xB3 with its bits reversed) and 0xB6 solid.
+
+![Pyramids and lightning](imagenes/desierto_tormenta_en.png)
+
+Drawn from the ROM, rising step by step. And it shows the other effect painted
+**over** the background: the storm's lightning bolt, drawn with the cartridge's
+third drawing routine —`PINTA_ROTULO` (0x455A), the one copied to 0xE1C0 that
+runs in RAM— from row 2. The four pointers at 0x72D2 give **three** distinct
+shapes: the first one is repeated.
 
 ## Close up, a rival stops being sprites
 
