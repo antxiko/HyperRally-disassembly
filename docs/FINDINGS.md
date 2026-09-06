@@ -111,6 +111,61 @@ screen. So the near rival is not made of those sprites, which is what
 [theNestruo](https://github.com/theNestruo) described as sprites first and tiles
 when closer.
 
+![How a rival comes closer](imagenes/rival_acercandose_en.png)
+
+The scene above is not a capture: the race screen is **built by running the
+cartridge's own decompressors in Python** — DESC_DOBLE (0x44B0) for the
+background, PINTA_TIRA (0x4529) for the road — and the cars are painted with the
+patterns those decompressors leave in VRAM. The sprite patterns come from the
+script at 0x488A, and compared against a VRAM dump from the emulator they come
+out **identical byte for byte, all 1632 of them**.
+
+### The twenty steps, and why four sprites and not two
+
+The index that comes out of 0x7A19 — byte 0 divided by eight, in two ranges —
+indexes the table at **0x7D94**, which gives two bytes per step: the **base
+pattern** and the **Y on screen**. The two low bits of that pattern are not part
+of the number: 0x7A73 and 0x7A81 read them to **switch off the spare sprites**.
+
+| low bits | sprites | size |
+|---|---|---|
+| `00` | 4 | 32 × 16, in **two colour layers** |
+| `01` | 2 | 32 × 16, single colour |
+| `11` | 1 | 16 × 16 |
+
+The four sprites are not a 32 × 32 car: they are **two overlaid pairs**, the
+second one with patterns base + 8 and base + 12 and with the colour at 0xE09A
+instead of the one at 0xE09B. An MSX1 sprite only takes one colour; this is how
+a two-colour car is painted out of two layers, which is what you see up close
+and not far away.
+
+![The steps of a rival](imagenes/rival_escala_en.png)
+
+The twentieth step (pattern 0x88) is deliberately left out of the drawing: its
+patterns are **not a smaller car but the car sideways**, and it needs a byte 0 of
+0xF0 or more, which is exactly the value MUEVE_RIVAL compares against at 0x7CA2.
+What lights it up is unmeasured.
+
+### The near rival is twelve tiles, and only six are in the ROM
+
+When byte 0 drops below **0x28** the branch is RIVAL_MEDIO (0x7AD1) and the car
+is drawn into the **name table**: four tiles wide by three tall, 32 × 24 pixels.
+The twelve numbers are literal in the ROM at **0x7BF3**, and PREPARA_RIVALES
+(0x7B67) copies them into the strip buffer at 0xE200, interleaving the control
+codes PINTA_TIRA understands — the `0x20` that jumps a row and the `0x00` that
+closes:
+
+    24 27 2D 2A 20 | 25 28 2E 2B 20 | 26 29 29 2C 20 | FD FD FD FD 00
+
+But of the eleven distinct patterns, **the cartridge only stores six**: 0x2A is
+0x24 with its bits reversed, 0x2B is 0x25, 0x2C is 0x26, 0x2D is 0x27 and 0x2E is
+0x28. The other half is put there by **DESC_DOBLE** (0x44B0), which runs the same
+block twice and sends the second pass through the relocated core at 0xE310,
+which with bit 0 of C set falls into INVIERTE_BITS. And 0x29 is its own mirror,
+which is why it appears twice in the bottom row.
+
+![Half a car in the ROM](imagenes/rival_espejo_en.png)
+
 Where the next one appears is 0x7F65, and only on phase 0 of 0xE003: half the
 time (from the refresh register) the X is 0x1F, and otherwise it comes from
 (stage − 1) mod 4 — 0x7F, 0x5F, 0x3F, 0x1F. It **cycles every four stages**

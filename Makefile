@@ -81,6 +81,7 @@ imagenes: $(ROM)
 	@mkdir -p work/gfx
 	python3 tools/dibuja.py $(ROM) $(ORG) $(SRC)/hyperrally.notes work/gfx
 	python3 tools/recorrido.py $(ROM) $(ORG) $(SRC)/hyperrally.notes work/gfx
+	python3 tools/escena.py $(ROM) $(ORG) work/gfx
 
 # El control del recorrido de los rivales: la formula que el listado dice que
 # mueve la ficha, contra el paso que el Z80 calculo de verdad en el emulador.
@@ -94,6 +95,7 @@ control: $(ROM)
 # make_web.py, que declara las cifras medidas de ESTE cartucho.
 web: $(ROM)
 	python3 tools/graficos.py $(ROM) $(ORG) $(SRC)/hyperrally.notes docs/imagenes
+	python3 tools/escena.py $(ROM) $(ORG) docs/imagenes
 	python3 tools/md2html.py docs en
 	python3 tools/md2html.py docs/es es
 	python3 tools/make_web.py docs/imagenes docs/index.html en

@@ -181,7 +181,8 @@ class TestWeb(unittest.TestCase):
                                      "%s nombra %s" % (fn, juego))
 
     def test_las_herramientas_de_la_web_no_hablan_de_otro_juego(self):
-        for fn in ("make_web.py", "md2html.py", "graficos.py"):
+        for fn in ("make_web.py", "md2html.py", "graficos.py",
+                   "carrera.py", "escena.py"):
             with open(os.path.join(RAIZ, "tools", fn), encoding="utf-8") as f:
                 texto = f.read()
             for juego in OTROS_JUEGOS:

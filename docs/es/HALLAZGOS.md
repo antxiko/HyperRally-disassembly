@@ -113,6 +113,60 @@ son esos sprites, que es lo que
 [theNestruo](https://github.com/theNestruo) describía como sprites primero y
 tiles al acercarse.
 
+![Cómo se acerca un rival](../imagenes/rival_acercandose.png)
+
+La escena de arriba no es una captura: la pantalla de carrera está **montada
+ejecutando en Python los descompresores del cartucho** —DESC_DOBLE (0x44B0) para
+el fondo, PINTA_TIRA (0x4529) para la carretera— y los coches están pintados con
+los patrones que esos descompresores dejan en la VRAM. Los patrones de sprite
+salen del guión de 0x488A, y comparados con un volcado de VRAM del emulador
+salen **iguales byte a byte, los 1632**.
+
+### Los veinte escalones, y por qué cuatro sprites y no dos
+
+El índice que sale de 0x7A19 —el byte 0 partido por ocho, con dos tramos— indexa
+la tabla de **0x7D94**, que da dos bytes por escalón: el **patrón base** y la
+**Y en pantalla**. Los dos bits bajos de ese patrón no son parte del número:
+0x7A73 y 0x7A81 los miran para **apagar los sprites que sobran**.
+
+| bits bajos | sprites | de qué tamaño |
+|---|---|---|
+| `00` | 4 | 32 × 16, en **dos capas de color** |
+| `01` | 2 | 32 × 16, de un color |
+| `11` | 1 | 16 × 16 |
+
+Los cuatro sprites no son un coche de 32 × 32: son **dos parejas superpuestas**,
+la segunda con los patrones base + 8 y base + 12 y con el color de 0xE09A en vez
+del de 0xE09B. Un sprite del MSX1 sólo admite un color; así se pinta un coche de
+dos colores con dos capas, que es lo que se ve de cerca y no se ve de lejos.
+
+![Los escalones de un rival](../imagenes/rival_escala.png)
+
+El vigésimo escalón (patrón 0x88) queda fuera del dibujo a propósito: sus
+patrones **no son el coche más pequeño, sino el coche de lado**, y pide un byte 0
+de 0xF0 para arriba, que es justo el valor contra el que MUEVE_RIVAL compara en
+0x7CA2. Qué lo enciende, sin medir.
+
+### El rival de cerca son doce casillas, y sólo seis están en la ROM
+
+Cuando el byte 0 baja de **0x28**, la rama es RIVAL_MEDIO (0x7AD1) y el coche se
+dibuja en la **tabla de nombres**: cuatro casillas de ancho por tres de alto,
+32 × 24 píxeles. Los doce números están literales en la ROM en **0x7BF3**, y
+PREPARA_RIVALES (0x7B67) los copia al buffer de tiras de 0xE200 intercalando los
+códigos de control que PINTA_TIRA entiende —el `0x20` que salta de fila y el
+`0x00` que cierra:
+
+    24 27 2D 2A 20 | 25 28 2E 2B 20 | 26 29 29 2C 20 | FD FD FD FD 00
+
+Pero de los once patrones distintos, **el cartucho sólo guarda seis**: 0x2A es
+0x24 con los bits del revés, 0x2B es 0x25, 0x2C es 0x26, 0x2D es 0x27 y 0x2E es
+0x28. La otra mitad la pone **DESC_DOBLE** (0x44B0), que pasa el mismo bloque dos
+veces y la segunda la manda por el núcleo reubicado de 0xE310, que con el bit 0
+de C puesto cae en INVIERTE_BITS. Y 0x29 es su propio espejo, por eso aparece dos
+veces en la fila de abajo.
+
+![Medio coche en la ROM](../imagenes/rival_espejo.png)
+
 Dónde aparece el siguiente lo decide 0x7F65, y sólo en la fase 0 de 0xE003: la
 mitad de las veces (por el registro de refresco) la X es 0x1F, y si no sale de
 (etapa − 1) mod 4 — 0x7F, 0x5F, 0x3F, 0x1F. **Cicla cada cuatro etapas**, no

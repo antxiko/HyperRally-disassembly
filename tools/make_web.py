@@ -38,8 +38,10 @@ TXT = {
         aviso="<b>Aquí no hay ninguna ilustración ni captura.</b> La fuente y "
               "los tiles están <b>dibujados desde los bytes de la ROM</b>, "
               "ejecutando en Python el mismo descompresor de guiones que corre "
-              "el Z80. El listado y las cifras salen del binario y se "
-              "reproducen con <code>make</code>.",
+              "el Z80; hasta la <b>escena de la carretera</b> se monta así, "
+              "ejecutando los descompresores del cartucho y pintando los coches "
+              "con sus propios patrones. El listado y las cifras salen del "
+              "binario y se reproducen con <code>make</code>.",
         claim="Un rally de doce etapas en un cartucho de 16 KB: una carretera "
               "en falso 3D, un salpicadero con cuentakilómetros, gasolina, "
               "marcha y reloj, coches rivales que colisionan por profundidad, "
@@ -74,9 +76,11 @@ TXT = {
         titulo="Hyper Rally — a commented disassembly",
         aviso="<b>There is not one illustration or capture here.</b> The font "
               "and the tiles are <b>drawn from the bytes of the ROM</b>, by "
-              "running in Python the same script decompressor the Z80 runs. "
-              "The listing and the numbers come from the binary and are "
-              "reproducible with <code>make</code>.",
+              "running in Python the same script decompressor the Z80 runs; "
+              "even the <b>road scene</b> is built that way, running the "
+              "cartridge's decompressors and painting the cars with its own "
+              "patterns. The listing and the numbers come from the binary and "
+              "are reproducible with <code>make</code>.",
         claim="A twelve-stage rally in a 16 KB cartridge: a fake-3D road, a "
               "dashboard with a speedometer, fuel, gear and clock, rival cars "
               "that collide by depth, and everything driven by the per-frame "
@@ -161,6 +165,19 @@ HALLAZGOS = {
          "velocidad: forzado a 0 te los comes a todos, forzado a 255 se te "
          "escapan todos. La cuenta rehecha en Python reproduce "
          "<b>102 de 102</b> casos leídos dentro de la propia rutina.</p>"),
+        ("Un rival que se acerca cambia de material por el camino",
+         "<p>No crece: <b>deja de ser sprites y pasa a ser pantalla</b>. La "
+         "tabla 0x7D94 da veinte escalones, y los dos bits bajos de cada patrón "
+         "dicen cuántos sprites se encienden —uno de lejos, dos más cerca, y "
+         "cuatro en <b>dos capas de color</b> superpuestas, que es como se pinta "
+         "un coche de dos colores con sprites de un color cada uno—. Cuando el "
+         "byte 0 de la ficha baja de <b>0x28</b>, 0x7B21 pone <b>Y = 0xE0</b> en "
+         "los cuatro sprites y RIVAL_MEDIO (0x7AD1) lo repinta con <b>doce "
+         "casillas</b> de la tabla de nombres.</p>"
+         "<p>Y de esas doce, el cartucho sólo guarda la mitad: <b>0x2A es 0x24 "
+         "con los bits del revés</b>, y así hasta 0x2E. La otra mitad la pone "
+         "DESC_DOBLE (0x44B0), que pasa el mismo bloque dos veces y la segunda "
+         "por el núcleo reubicado de 0xE310, que cae en INVIERTE_BITS.</p>"),
     ],
     "en": [
         ("It carries Konami's hidden mark",
@@ -213,6 +230,20 @@ HALLAZGOS = {
          "to 0 you eat all of them, forced to 255 they all get away. The "
          "arithmetic redone in Python reproduces <b>102 of 102</b> cases read "
          "inside the routine itself.</p>"),
+        ("An opponent coming closer changes material on the way",
+         "<p>It does not grow: <b>it stops being sprites and becomes screen</b>. "
+         "Table 0x7D94 gives twenty steps, and the two low bits of each pattern "
+         "say how many sprites light up —one far away, two closer, and four in "
+         "<b>two overlaid colour layers</b>, which is how you paint a two-colour "
+         "car out of sprites that only take one colour each—. When byte 0 of the "
+         "record drops below <b>0x28</b>, 0x7B21 writes <b>Y = 0xE0</b> into all "
+         "four sprites and RIVAL_MEDIO (0x7AD1) repaints it with <b>twelve "
+         "tiles</b> of the name table.</p>"
+         "<p>And of those twelve, the cartridge only stores half: <b>0x2A is "
+         "0x24 with its bits reversed</b>, and so on up to 0x2E. The other half "
+         "is put there by DESC_DOBLE (0x44B0), which runs the same block twice "
+         "and sends the second pass through the relocated core at 0xE310, which "
+         "falls into INVIERTE_BITS.</p>"),
     ],
 }
 
@@ -246,11 +277,41 @@ GALERIA = [
      "The road and scenery tiles that follow the font in the same block, "
      "decompressed the same way. They are the pieces the track edges and each "
      "stage's landscape are built from"),
-    # Los tres diagramas del recorrido de los rivales se han retirado de la
-    # portada: no se entendian. El contenido medido sigue entero en la pagina
-    # de hallazgos, en texto y tablas. Vuelven cuando esten dibujados como una
-    # escena de la carretera -el rival de lejos con sus cuatro sprites y de
-    # cerca con sus casillas-, que es lo que pedia el issue. Ver .forja/handoff.md.
+    # Las tres del rival llevan sus rotulos DENTRO, asi que hay una version por
+    # idioma: la inglesa es el mismo nombre con _en. La escena no es una
+    # captura: la pantalla se monta ejecutando en Python los descompresores del
+    # cartucho (tools/carrera.py) y los coches se pintan con sus patrones.
+    ("rival_acercandose.png",
+     "Cómo se acerca un rival, sobre la pantalla de carrera montada ejecutando "
+     "los descompresores del cartucho. El mismo coche a cuatro distancias: de "
+     "lejos son sprites -uno, luego dos, luego cuatro en dos capas de color- y "
+     "en el último escalón el cartucho los apaga (0x7B21, Y = 0xE0) y lo "
+     "repinta con doce casillas de la pantalla",
+     "How a rival comes closer, over the race screen built by running the "
+     "cartridge's own decompressors. The same car at four distances: far away "
+     "it is sprites -one, then two, then four in two colour layers- and on the "
+     "last step the cartridge switches them off (0x7B21, Y = 0xE0) and repaints "
+     "it with twelve screen tiles"),
+    ("rival_escala.png",
+     "Los escalones de un rival, leídos de la tabla 0x7D94: el patrón base y su "
+     "altura en pantalla. Los dos bits bajos de ese patrón dicen cuántos "
+     "sprites se encienden, porque 0x7A73 apaga los que sobran; el último ya no "
+     "es un sprite, son cuatro por tres casillas",
+     "The steps of a rival, read from table 0x7D94: the base pattern and its "
+     "height on screen. The two low bits of that pattern say how many sprites "
+     "light up, because 0x7A73 switches off the spare ones; the last one is not "
+     "a sprite any more, it is four by three tiles"),
+    ("rival_espejo.png",
+     "El rival de cerca y sus doce casillas una a una. Los doce números están "
+     "literales en la ROM en 0x7BF3, pero los patrones sólo a medias: 0x2A es "
+     "0x24 con los bits del revés, y así hasta 0x2E. El cartucho guarda medio "
+     "coche, y la otra mitad la pone DESC_DOBLE (0x44B0) pasando el mismo "
+     "bloque por INVIERTE_BITS",
+     "The rival up close and its twelve tiles one by one. The twelve numbers "
+     "are literal in the ROM at 0x7BF3, but only half of the patterns are: 0x2A "
+     "is 0x24 with its bits reversed, and so on up to 0x2E. The cartridge "
+     "stores half a car, and the other half is put there by DESC_DOBLE (0x44B0) "
+     "sending the same block through INVIERTE_BITS"),
 ]
 
 
@@ -287,6 +348,10 @@ def main(argv):
     faltan = []
     for fich, es, en in GALERIA:
         ruta = os.path.join(imgdir, fich)
+        if idioma == "en":                   # las que llevan rotulos dentro
+            otra = os.path.join(imgdir, fich.replace(".png", "_en.png"))
+            if os.path.exists(otra):
+                ruta = otra
         if not os.path.exists(ruta):
             faltan.append(fich)
             continue
