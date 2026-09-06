@@ -472,7 +472,7 @@ PREPARA_ETAPA:		; Limpia el bloque 0xE058-0xE178 y avanza la etapa
 	ldir		;4354
 	ld hl,0e060h		;4356   ; sube 0xE060 a la etapa siguiente
 	inc (hl)			;4359
-	ld hl,08006h		;435a   ; arranca los dos punteros de posicion en 0x8006
+	ld hl,08006h		;435a   ; el RANK arranca en 680: HL=0x8006 son los dos bytes BCD
 	ld (0e05bh),hl		;435d
 	ld (0e05dh),hl		;4360
 	ret			;4363
@@ -1159,7 +1159,7 @@ DIBUJA_CARRERA:		; La tuberia de dibujado del cuadro de carrera
 	call MIRA_CHOQUE_LATERAL		;47c1
 	call AJUSTA_ALTURA_COCHE		;47c4
 	call VUELCA_SPRITES_COCHE		;47c7
-	jp CHOQUE_OBSTACULO		;47ca
+	jp CHOQUE_CONTRA_RIVAL		;47ca
 ACTUALIZA_SI_JUEGA:		; Solo con partida en marcha (0xE085)
 	ld a,(0e085h)		;47cd
 	or a			;47d0
@@ -3366,7 +3366,7 @@ ALGO_6B5E:		; Rutina auxiliar de dibujo del panel
 	call DESCOMPRIME_GUION		;6b61
 	ld hl,0d000h		;6b64
 	ld (0e070h),hl		;6b67
-	call RIVALES_2_6BCF		;6b6a
+	call PINTA_RANK		;6b6a
 	ld de,06b79h		;6b6d
 	ld hl,03b0ch		;6b70
 	ld bc,00004h		;6b73
@@ -3383,66 +3383,66 @@ DATA_tabla_panel:
 ; ======================================================================
 
 
-COLOCA_RIVALES_VRAM:		; Escribe en la VRAM las X/Y de los tres rivales
-	ld a,(0e000h)		;6b7d   ; escribe la posicion de los tres rivales en la VRAM
+ACTUALIZA_RANK:		; Mueve tu puesto en la carrera al cruzarte con un rival
+	ld a,(0e000h)		;6b7d   ; el RANK del panel, que empieza en 680 (0x435A pone HL=0x8006)
 	cp 007h		;6b80
 	ret nc			;6b82
 	ld hl,0e090h		;6b83
-	call COLOCA_RIVALES_VRAM_6B96		;6b86
+	call ACTUALIZA_RANK_UNO		;6b86
 	ld hl,0e093h		;6b89
-	call COLOCA_RIVALES_VRAM_6B96		;6b8c
+	call ACTUALIZA_RANK_UNO		;6b8c
 	ld hl,0e096h		;6b8f
-	call COLOCA_RIVALES_VRAM_6B96		;6b92
+	call ACTUALIZA_RANK_UNO		;6b92
 	ret			;6b95
-COLOCA_RIVALES_VRAM_6B96:
-	ld a,(hl)			;6b96   ; recorre las fichas de los rivales
+ACTUALIZA_RANK_UNO:
+	ld a,(hl)			;6b96   ; E = donde esta el rival ahora; (HL) = donde estaba en el cuadro anterior
 	ld e,a			;6b97
-	inc hl			;6b98   ; avanza a la ficha del rival siguiente
+	inc hl			;6b98
 	inc hl			;6b99
-	or (hl)			;6b9a
+	or (hl)			;6b9a   ; con el bit alto puesto en cualquiera de los dos, no cuenta
 	rla			;6b9b
 	ret c			;6b9c
 	ld bc,00000h		;6b9d
-	ld a,017h		;6ba0
+	ld a,017h		;6ba0   ; el umbral del cruce: 0x17, tu altura en la carretera
 	cp (hl)			;6ba2
-	jr nc,COLOCA_RIVALES_VRAM_6BA6		;6ba3
+	jr nc,ACTUALIZA_RANK_6BA6		;6ba3
 	inc c			;6ba5
-COLOCA_RIVALES_VRAM_6BA6:
+ACTUALIZA_RANK_6BA6:
 	cp e			;6ba6
 	ld a,b			;6ba7
-	jr nc,RIVALES_1		;6ba8
+	jr nc,RANK_DECIDE		;6ba8
 	inc a			;6baa
-RIVALES_1:
-	cp c			;6bab   ; coloca un rival en su casilla de la VRAM
+RANK_DECIDE:
+	cp c			;6bab   ; si los dos estan al mismo lado del umbral, no ha cruzado nada
 	ret z			;6bac
-	pop hl			;6bad
+	pop hl			;6bad   ; sale de la rutina entera: como mucho cuenta un cruce por cuadro
 	ld hl,0e05ch		;6bae
-	jr c,RIVALES_2		;6bb1
-	jr nc,RIVALES_1_6BB5		;6bb3
-RIVALES_1_6BB5:
-	ld a,(hl)			;6bb5   ; avanza a la ficha del rival siguiente
+	jr c,RANK_MEJORA		;6bb1
+	jr nc,RANK_EMPEORA		;6bb3
+RANK_EMPEORA:
+	ld a,(hl)			;6bb5   ; te ha pasado: el numero del puesto SUBE, o sea que empeoras
 	add a,001h		;6bb6
 	daa			;6bb8
 	ld (hl),a			;6bb9
-	jr nc,RIVALES_2_6BCF		;6bba
+	jr nc,PINTA_RANK		;6bba
 	dec hl			;6bbc
 	inc (hl)			;6bbd
-	jr RIVALES_2_6BCF		;6bbe
-RIVALES_2:
-	ld a,(hl)			;6bc0   ; segunda pasada de colocacion de rivales
+	jr PINTA_RANK		;6bbe
+RANK_MEJORA:
+	ld a,(hl)			;6bc0   ; lo has pasado tu: el puesto baja, y encima 250 puntos
 	sub 001h		;6bc1
 	daa			;6bc3
 	ld (hl),a			;6bc4
-	jr nc,RIVALES_2_6BC9		;6bc5
+	jr nc,RANK_MEJORA_6BC9		;6bc5
 	dec hl			;6bc7
 	dec (hl)			;6bc8
-RIVALES_2_6BC9:
+RANK_MEJORA_6BC9:
 	ld de,00250h		;6bc9
 	call SUMA_PUNTOS		;6bcc
-RIVALES_2_6BCF:
-	ld hl,030d0h		;6bcf   ; ajusta la casilla del rival
+PINTA_RANK:
+	ld hl,030d0h		;6bcf   ; repinta los tres digitos del RANK, abajo a la derecha
 	ld a,(0e05bh)		;6bd2
-	call RIVALES_2_6BEA		;6bd5   ; recalcula la casilla del rival
+	call PINTA_DIGITO_RANK		;6bd5   ; cada digito redefine el patron de su casilla
 	ld hl,030d8h		;6bd8
 	ld a,(0e05ch)		;6bdb
 	push af			;6bde
@@ -3450,11 +3450,11 @@ RIVALES_2_6BCF:
 	rrca			;6be0
 	rrca			;6be1
 	rrca			;6be2
-	call RIVALES_2_6BEA		;6be3
+	call PINTA_DIGITO_RANK		;6be3
 	pop af			;6be6
 	ld hl,030e0h		;6be7
-RIVALES_2_6BEA:
-	and 00fh		;6bea   ; cierra la colocacion del rival
+PINTA_DIGITO_RANK:
+	and 00fh		;6bea   ; saca el digito de la fuente de 0x4DEF, ocho bytes por patron
 	ld de,04defh		;6bec
 	add a,a			;6bef
 	add a,a			;6bf0
@@ -4239,24 +4239,24 @@ ACTUALIZA_RIVALES:		; Mueve y dibuja los tres coches rivales; mira choques
 	ld a,(0e09fh)		;7996
 	or a			;7999
 	ret nz			;799a
-	call COLOCA_RIVALES_VRAM		;799b   ; recoloca los sprites tras el barrido
+	call ACTUALIZA_RANK		;799b   ; recoloca los sprites tras el barrido
 	ld hl,0e0d9h		;799e
 	xor a			;79a1
 	cp (hl)			;79a2
-	jr z,ACTUALIZA_RIVALES_79A9		;79a3
+	jr z,SORTEA_VELOCIDAD_RIVAL		;79a3
 	ld (hl),a			;79a5
 	call REACCION_CHOQUE		;79a6
-ACTUALIZA_RIVALES_79A9:
-	ld c,0a0h		;79a9   ; elige el color aleatorio del proximo rival
-	ld a,(0e060h)		;79ab
+SORTEA_VELOCIDAD_RIVAL:
+	ld c,0a0h		;79a9   ; sortea la velocidad del proximo rival (0xE09C), NO su color
+	ld a,(0e060h)		;79ab   ; la base sale de la etapa: 0xA0, y 0x88 con el bit 2 puesto
 	bit 2,a		;79ae
-	jr z,ACTUALIZA_RIVALES_79BB		;79b0
+	jr z,SORTEA_VELOCIDAD_RIVAL_79BB		;79b0
 	ld a,(0e075h)		;79b2
 	cp 008h		;79b5
-	jr z,ACTUALIZA_RIVALES_79BB		;79b7
+	jr z,SORTEA_VELOCIDAD_RIVAL_79BB		;79b7
 	ld c,088h		;79b9
-ACTUALIZA_RIVALES_79BB:
-	ld a,r		;79bb
+SORTEA_VELOCIDAD_RIVAL_79BB:
+	ld a,r		;79bb   ; base + (R & 3) * 8: cuatro velocidades por base
 	and 003h		;79bd
 	add a,a			;79bf
 	add a,a			;79c0
@@ -4299,7 +4299,7 @@ RIVAL_2:
 	ld a,(0e09fh)		;79f7
 	or a			;79fa
 	jr nz,RIVAL_COLISION		;79fb
-	call MIRA_CHOQUE_RIVAL		;79fd
+	call MUEVE_RIVAL		;79fd
 RIVAL_COLISION:
 	ld a,(hl)			;7a00   ; comprueba el choque contra el rival
 	ld b,a			;7a01
@@ -4470,7 +4470,7 @@ RIVAL_MEDIO_7AE2:
 RIVAL_REPARTE:		; Reparte por el nivel de cercania (0xE09E)
 	ld a,b			;7b01   ; el rival lejano, el mas pequeno, no llega a esta rama
 	cp 016h		;7b02
-	call c,DETECTA_CHOQUE_7D02		;7b04
+	call c,FIJA_FRANJA_CRUCE		;7b04
 	ld a,(0e09eh)		;7b07
 	or a			;7b0a
 	ret z			;7b0b
@@ -4662,122 +4662,122 @@ ORDENA_RIVALES_1:
 	ret nc			;7c48
 	ex de,hl			;7c49
 	ret			;7c4a
-MIRA_CHOQUE_RIVAL:		; Compara la posicion del jugador con la del rival
-	ld a,(0e070h)		;7c4b   ; compara la posicion del jugador con la del rival
+MUEVE_RIVAL:		; Decide si el rival se acerca a ti o se aleja
+	ld a,(0e070h)		;7c4b   ; su UNICO efecto es mover el byte 0 de la ficha: no frena a nadie
 	or a			;7c4e
-	ret z			;7c4f   ; coches en la misma banda: choque posible
+	ret z			;7c4f   ; coches en la misma banda
 	ld d,000h		;7c50
 	ld a,(0e05bh)		;7c52
 	or a			;7c55
-	jr nz,CHOQUE_RIVAL_1		;7c56
+	jr nz,MUEVE_RIVAL_1		;7c56
 	ld a,(0e05ch)		;7c58
 	cp 004h		;7c5b
-	jr nc,CHOQUE_RIVAL_1		;7c5d
+	jr nc,MUEVE_RIVAL_1		;7c5d
 	inc d			;7c5f
-CHOQUE_RIVAL_1:
-	exx			;7c60   ; mide la distancia al rival
+MUEVE_RIVAL_1:
+	exx			;7c60   ; HL' guarda 0xE09D, la X con la que aparecio
 	ld hl,0e09dh		;7c61
-	exx			;7c64   ; guarda la banda del rival
-	ld a,(0e09ch)		;7c65
+	exx			;7c64
+	ld a,(0e09ch)		;7c65   ; C = 0xE09C, la velocidad DEL RIVAL
 	ld c,a			;7c68
 	ld a,(0e085h)		;7c69
 	sub c			;7c6c
-	ld b,(hl)			;7c6d
-	jr nc,CHOQUE_RIVAL_4		;7c6e
+	ld b,(hl)			;7c6d   ; B = donde esta el rival respecto a ti
+	jr nc,MUEVE_RIVAL_4		;7c6e
 	push hl			;7c70
 	ld a,l			;7c71
 	add a,003h		;7c72
 	ld l,a			;7c74
 	cp 097h		;7c75
-	jr c,CHOQUE_RIVAL_2		;7c77
+	jr c,MUEVE_RIVAL_2		;7c77
 	ld l,090h		;7c79
-CHOQUE_RIVAL_2:
-	ld a,(hl)			;7c7b   ; mira si el jugador lo pisa por detras
+MUEVE_RIVAL_2:
+	ld a,(hl)			;7c7b   ; lee la posicion del rival siguiente, la ficha ya elegida en circulo
 	pop hl			;7c7c
-	sub b			;7c7d   ; resta la anchura del rival
+	sub b			;7c7d   ; E = lo que separa a los dos rivales
 	ld e,a			;7c7e
 	ld a,b			;7c7f
-	cp 016h		;7c80
-	jr nc,CHOQUE_RIVAL_3		;7c82
+	cp 016h		;7c80   ; con el rival casi encima de ti (menos de 0x16)
+	jr nc,MUEVE_RIVAL_3		;7c82
 	ld a,e			;7c84
-	cp 078h		;7c85
-	jr nc,IMPACTO		;7c87
+	cp 078h		;7c85   ; solo lo mueve si el otro le deja sitio de sobra
+	jr nc,AVANZA_RIVAL		;7c87
 	ret			;7c89
-CHOQUE_RIVAL_3:
+MUEVE_RIVAL_3:
 	cp 0f0h		;7c8a   ; mira el solape lateral
-	jr c,IMPACTO		;7c8c
+	jr c,AVANZA_RIVAL		;7c8c
 	ld a,e			;7c8e
 	cp 020h		;7c8f
-	jr nc,IMPACTO		;7c91
+	jr nc,AVANZA_RIVAL		;7c91
 	ret			;7c93
-CHOQUE_RIVAL_4:
+MUEVE_RIVAL_4:
 	push hl			;7c94   ; compara las bandas de los dos coches
 	ld a,l			;7c95
 	sub 003h		;7c96
 	ld l,a			;7c98
 	cp 08fh		;7c99
-	jr nc,CHOQUE_RIVAL_5		;7c9b
+	jr nc,MUEVE_RIVAL_5		;7c9b
 	ld l,096h		;7c9d
-CHOQUE_RIVAL_5:
+MUEVE_RIVAL_5:
 	ld e,(hl)			;7c9f   ; lee la banda del rival
 	pop hl			;7ca0
 	ld a,b			;7ca1   ; mira si el jugador viene por detras
 	cp 0f0h		;7ca2
-	jr c,CHOQUE_RIVAL_6		;7ca4
+	jr c,MUEVE_RIVAL_6		;7ca4
 	ld a,d			;7ca6
 	or a			;7ca7
 	ret nz			;7ca8
 	ld a,b			;7ca9
 	sub e			;7caa
-	jr c,IMPACTO		;7cab
+	jr c,AVANZA_RIVAL		;7cab
 	exx			;7cad
 	cp (hl)			;7cae
 	exx			;7caf
-	jr nc,IMPACTO		;7cb0
+	jr nc,AVANZA_RIVAL		;7cb0
 	ret			;7cb2
-CHOQUE_RIVAL_6:
-	cp 016h		;7cb3   ; caso de choque de frente
-	jr nc,IMPACTO		;7cb5
+MUEVE_RIVAL_6:
+	cp 016h		;7cb3   ; el rival, justo delante
+	jr nc,AVANZA_RIVAL		;7cb5
 	ld a,d			;7cb7
 	or a			;7cb8
-	jr nz,CHOQUE_RIVAL_7		;7cb9
+	jr nz,MUEVE_RIVAL_7		;7cb9
 	ld a,e			;7cbb
 	cp 0f0h		;7cbc
-	jr c,IMPACTO		;7cbe
+	jr c,AVANZA_RIVAL		;7cbe
 	ret			;7cc0
-CHOQUE_RIVAL_7:
-	ld a,b			;7cc1   ; empuja al rival al chocar
+MUEVE_RIVAL_7:
+	ld a,b			;7cc1   ; lo empuja dos posiciones, con suelo en 1
 	cp e			;7cc2
 	inc e			;7cc3
 	inc e			;7cc4
-	jr nc,CHOQUE_RIVAL_7_7CC9		;7cc5
+	jr nc,MUEVE_RIVAL_7_7CC9		;7cc5
 	ld e,001h		;7cc7
-CHOQUE_RIVAL_7_7CC9:
+MUEVE_RIVAL_7_7CC9:
 	ld (hl),e			;7cc9
 	ret			;7cca
-IMPACTO:		; Frena de golpe segun la velocidad relativa del choque
-	ld a,(0e085h)		;7ccb   ; frena de golpe segun la velocidad del choque
-	sub c			;7cce
-	jr c,IMPACTO_NEG		;7ccf
+AVANZA_RIVAL:		; El motor del recorrido: (velocidad del rival - la tuya) / 16
+	ld a,(0e085h)		;7ccb   ; NO es un impacto: en 45 s sin un solo golpe pasa por aqui 1329 veces
+	sub c			;7cce   ; la velocidad del jugador menos la del rival
+	jr c,AVANZA_RIVAL_SE_ESCAPA		;7ccf
 	rrca			;7cd1
 	rrca			;7cd2
 	rrca			;7cd3
 	rrca			;7cd4
 	and 00fh		;7cd5
-	jr IMPACTO_APLICA		;7cd7
-IMPACTO_NEG:
-	neg		;7cd9   ; rebote con velocidad negativa
+	jr AVANZA_RIVAL_APLICA		;7cd7
+AVANZA_RIVAL_SE_ESCAPA:
+	neg		;7cd9   ; el rival corre mas que tu: el resultado sale con signo cambiado
 	rrca			;7cdb
 	rrca			;7cdc
 	rrca			;7cdd
 	rrca			;7cde
 	and 00fh		;7cdf
 	neg		;7ce1
-IMPACTO_APLICA:
+AVANZA_RIVAL_APLICA:
 	ld c,a			;7ce3
 	ld a,(hl)			;7ce4
 	sub c			;7ce5
-	ld (hl),a			;7ce6
+	ld (hl),a			;7ce6   ; la unica escritura del byte 0 de la ficha en todo el cartucho
 	ret			;7ce7
 DETECTA_CHOQUE:		; Comprueba si el jugador ha alcanzado a un rival
 	inc hl			;7ce8   ; comprueba si el jugador alcanza al rival
@@ -4797,20 +4797,20 @@ DETECTA_CHOQUE_7CFA:
 	ld (hl),a			;7cff
 	ld c,a			;7d00
 	ret			;7d01
-DETECTA_CHOQUE_7D02:
-	ld e,000h		;7d02   ; mide el solape con el rival alcanzado
-	ld a,(0e121h)		;7d04
-	cp 059h		;7d07   ; fuera del margen no hay choque
-	jr c,DETECTA_CHOQUE_7D17		;7d09
+FIJA_FRANJA_CRUCE:		; Apunta por que franja te cruza el rival
+	ld e,000h		;7d02   ; el byte 1 de la ficha sale de la X del JUGADOR, no de la del rival
+	ld a,(0e121h)		;7d04   ; 0xE121 es la X del primer sprite del coche del jugador
+	cp 059h		;7d07   ; cuatro franjas: 0 / 3 / 4 / 1 de izquierda a derecha
+	jr c,FIJA_FRANJA_CRUCE_ESCRIBE		;7d09
 	inc e			;7d0b
 	cp 099h		;7d0c
-	jr nc,DETECTA_CHOQUE_7D17		;7d0e
+	jr nc,FIJA_FRANJA_CRUCE_ESCRIBE		;7d0e
 	ld e,003h		;7d10
 	cp 071h		;7d12
-	jr c,DETECTA_CHOQUE_7D17		;7d14
+	jr c,FIJA_FRANJA_CRUCE_ESCRIBE		;7d14
 	inc e			;7d16
-DETECTA_CHOQUE_7D17:
-	ld (hl),e			;7d17
+FIJA_FRANJA_CRUCE_ESCRIBE:
+	ld (hl),e			;7d17   ; medido: 975 escrituras, todas dentro de su franja
 	ret			;7d18
 SONIDO_ETAPA:		; Arranca las melodias/efectos de fondo de la etapa
 	ld hl,tablas_choque_base		;7d19   ; arranca las melodias de fondo de la etapa
@@ -4928,45 +4928,45 @@ SPAWN_1:
 	ld a,c			;7f84
 	ld (0e09dh),a		;7f85
 	ret			;7f88
-CHOQUE_OBSTACULO:		; Mira si el jugador toca un obstaculo y frena
-	ld de,0e08eh		;7f89
+CHOQUE_CONTRA_RIVAL:		; Mira si el jugador toca a un rival y frena
+	ld de,0e08eh		;7f89   ; 0xE08E + 2 = 0xE090: son las MISMAS tres fichas de rival
 	ld b,003h		;7f8c
-OBSTACULO_BUCLE:
-	inc de			;7f8e   ; recorre los tres obstaculos posibles
+CHOQUE_RIVAL_BUCLE:
+	inc de			;7f8e   ; recorre las tres fichas, tres bytes cada una
 	inc de			;7f8f
 	ld a,(de)			;7f90
 	inc de			;7f91
-	sub 016h		;7f92
+	sub 016h		;7f92   ; solo con el rival a menos de 0x20 de ti
 	sub 00ah		;7f94
-	jr nc,OBSTACULO_1		;7f96
+	jr nc,CHOQUE_RIVAL_NO		;7f96
 	ld a,(de)			;7f98
-	ld hl,07feeh		;7f99   ; el ancho del obstaculo sale de la tabla 0x7FEE
+	ld hl,07feeh		;7f99   ; la X del cruce sale de la tabla 0x7FEE, por el byte 1 de la ficha
 	call HL_MAS_A		;7f9c
 	ld c,(hl)			;7f9f
 	ld a,(0e125h)		;7fa0
 	ld l,a			;7fa3
 	sub c			;7fa4
 	sub 03eh		;7fa5
-	jr c,OBSTACULO_CHOCA		;7fa7
-OBSTACULO_1:
-	djnz OBSTACULO_BUCLE		;7fa9
+	jr c,CHOQUE_RIVAL_SI		;7fa7
+CHOQUE_RIVAL_NO:
+	djnz CHOQUE_RIVAL_BUCLE		;7fa9
 	ret			;7fab
-OBSTACULO_CHOCA:
-	ld b,l			;7fac   ; frena a la mitad al tocar un obstaculo
+CHOQUE_RIVAL_SI:
+	ld b,l			;7fac   ; frena a la mitad al tocar al rival
 	ld hl,0e085h		;7fad
 	srl (hl)		;7fb0   ; parte la velocidad por la mitad
 	ld hl,0e08ch		;7fb2
 	ld a,(hl)			;7fb5
 	or a			;7fb6
-	jr nz,OBSTACULO_CHOCA_7FE8		;7fb7
+	jr nz,CHOQUE_RIVAL_SI_7FE8		;7fb7
 	ld e,a			;7fb9
 	ld a,c			;7fba
 	add a,01fh		;7fbb
 	cp b			;7fbd
-	jr c,OBSTACULO_CHOCA_7FC1		;7fbe
+	jr c,CHOQUE_RIVAL_SI_7FC1		;7fbe
 	inc e			;7fc0
-OBSTACULO_CHOCA_7FC1:
-	ld (hl),001h		;7fc1   ; marca el golpe contra el obstaculo
+CHOQUE_RIVAL_SI_7FC1:
+	ld (hl),001h		;7fc1   ; marca el golpe contra el rival
 	inc hl			;7fc3
 	ld (hl),e			;7fc4   ; guarda la posicion del golpe
 	inc hl			;7fc5
@@ -4976,29 +4976,30 @@ OBSTACULO_CHOCA_7FC1:
 	ld c,008h		;7fcb
 	ld a,(0e00bh)		;7fcd
 	cp 03fh		;7fd0
-	jr nz,OBSTACULO_CHOCA_7FD6		;7fd2
+	jr nz,CHOQUE_RIVAL_SI_7FD6		;7fd2
 	ld c,00ch		;7fd4
-OBSTACULO_CHOCA_7FD6:
+CHOQUE_RIVAL_SI_7FD6:
 	ld hl,0e065h		;7fd6
 	ld a,(hl)			;7fd9
 	sub c			;7fda
-	jr nc,OBSTACULO_CHOCA_7FDF		;7fdb
+	jr nc,CHOQUE_RIVAL_SI_7FDF		;7fdb
 	ld a,003h		;7fdd
-OBSTACULO_CHOCA_7FDF:
-	ld (hl),a			;7fdf   ; cierra la reaccion al obstaculo
+CHOQUE_RIVAL_SI_7FDF:
+	ld (hl),a			;7fdf   ; cierra la reaccion al golpe
 	inc hl			;7fe0
 	inc hl			;7fe1
 	dec (hl)			;7fe2
 	ld a,04ch		;7fe3
 	call ARRANCA_SONIDO		;7fe5
-OBSTACULO_CHOCA_7FE8:
+CHOQUE_RIVAL_SI_7FE8:
 	call CAMBIA_MARCHA		;7fe8
 	jp DIBUJA_VELOCIMETRO		;7feb
 
 ; ----------------------------------------------------------------------
-; DATOS tabla_ancho_choque: Ancho de golpe de cada obstaculo (cierra en 0xFF)
+; DATOS tabla_x_del_cruce: X con la que se compara la del jugador, por franja
+;   de cruce
 ;   0x7fee..0x7ff5  (7 bytes)
-DATA_tabla_ancho_choque:
+DATA_tabla_x_del_cruce:
 	defb 069h,039h,071h,079h,029h,031h,0ffh	; 7fee
 
 ; ----------------------------------------------------------------------

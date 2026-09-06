@@ -13,14 +13,17 @@ Under the road sits a dashboard the code keeps up to date every frame:
 - a **speedometer** in km/h (drawn by 0x69E7 from the speed at 0xE085),
 - a **fuel gauge** whose needle drops as you go (0x6A49) and blinks a warning
   when it runs low (0x6AA9),
-- a **gear** indicator that shifts with the speed (0x6ACF), and
-- a **clock** that counts up in BCD (0x6B0E).
+- a **gear** indicator that shifts with the speed (0x6ACF),
+- a **clock** that counts up in BCD (0x6B0E), and
+- a **RANK**, your place in the race, which starts at 680 (0x435A) and moves a
+  place each time an opponent crosses your height (0x6B7D).
 
 ## Driving
 
 The wheel comes from 0x6643, the accelerator and brake from 0x6940. The car is
 six sprites (template at 0x66E2) that 0x65FA slides sideways as you steer. Rival
-cars come up the road; hitting one, or a roadside obstacle, brakes you hard.
+cars come up the road; hitting one halves your speed (0x7F89, which walks the
+same three opponent records).
 
 ## The rally
 

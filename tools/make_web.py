@@ -38,8 +38,10 @@ TXT = {
         aviso="<b>Aquí no hay ninguna ilustración ni captura.</b> La fuente y "
               "los tiles están <b>dibujados desde los bytes de la ROM</b>, "
               "ejecutando en Python el mismo descompresor de guiones que corre "
-              "el Z80. El listado y las cifras salen del binario y se "
-              "reproducen con <code>make</code>.",
+              "el Z80; los diagramas del recorrido de los rivales salen de "
+              "ejecutar igual la aritmética de 0x7CCB, y hasta sus números "
+              "están escritos con la fuente del cartucho. El listado y las "
+              "cifras salen del binario y se reproducen con <code>make</code>.",
         claim="Un rally de doce etapas en un cartucho de 16 KB: una carretera "
               "en falso 3D, un salpicadero con cuentakilómetros, gasolina, "
               "marcha y reloj, coches rivales que colisionan por profundidad, "
@@ -74,9 +76,12 @@ TXT = {
         titulo="Hyper Rally — a commented disassembly",
         aviso="<b>There is not one illustration or capture here.</b> The font "
               "and the tiles are <b>drawn from the bytes of the ROM</b>, by "
-              "running in Python the same script decompressor the Z80 runs. "
-              "The listing and the numbers come from the binary and are "
-              "reproducible with <code>make</code>.",
+              "running in Python the same script decompressor the Z80 runs; "
+              "the opponent-path diagrams come from running the arithmetic "
+              "of 0x7CCB the same way, and even their numbers are written "
+              "with the cartridge's own font. The listing and the numbers "
+              "come from the binary and are reproducible with "
+              "<code>make</code>.",
         claim="A twelve-stage rally in a 16 KB cartridge: a fake-3D road, a "
               "dashboard with a speedometer, fuel, gear and clock, rival cars "
               "that collide by depth, and everything driven by the per-frame "
@@ -150,9 +155,17 @@ HALLAZGOS = {
          "<p>El coche se monta con seis sprites (plantilla en 0x66E2) que "
          "0x65FA recoloca cada cuadro según el volante. Los tres rivales llevan "
          "sus fichas en 0xE138/48/58; 0x7C34 los ordena por cercanía antes de "
-         "dibujarlos, y el choque (0x7CCB) frena de golpe según la velocidad "
-         "relativa. Chocar contra un obstáculo del borde parte la velocidad por "
-         "la mitad (0x7F89).</p>"),
+         "dibujarlos, y 0x7F89 parte la velocidad por la mitad al chocar contra "
+         "uno.</p>"),
+        ("Un rival no tiene recorrido propio",
+         "<p>0x7CCB estaba en el listado como el impacto, "
+         "<b>y no toca tu velocidad</b>: lo único que escribe es la posición "
+         "del rival, y le suma <b>(la velocidad del rival − la tuya) / 16</b>. "
+         "En una carrera de 45 segundos sin un solo golpe corrió 1329 veces. "
+         "Y 0xE09C, que el listado llamaba el color del rival, es su "
+         "velocidad: forzado a 0 te los comes a todos, forzado a 255 se te "
+         "escapan todos. La cuenta rehecha en Python reproduce "
+         "<b>102 de 102</b> casos leídos dentro de la propia rutina.</p>"),
     ],
     "en": [
         ("It carries Konami's hidden mark",
@@ -195,8 +208,16 @@ HALLAZGOS = {
          "<p>The car is assembled from six sprites (template at 0x66E2) that "
          "0x65FA repositions every frame from the wheel. The three rivals keep "
          "their records at 0xE138/48/58; 0x7C34 sorts them by nearness before "
-         "drawing, and the crash (0x7CCB) brakes sharply by the relative "
-         "speed. Hitting a roadside obstacle halves the speed (0x7F89).</p>"),
+         "drawing, and 0x7F89 halves your speed when you hit one.</p>"),
+        ("An opponent has no path of its own",
+         "<p>0x7CCB was in the listing as the impact, <b>and it does not touch "
+         "your speed</b>: the only thing it writes is the opponent's position, "
+         "to which it adds <b>(the opponent's speed − yours) / 16</b>. In a "
+         "45-second race without a single hit it ran 1329 times. And 0xE09C, "
+         "which the listing called the opponent's colour, is its speed: forced "
+         "to 0 you eat all of them, forced to 255 they all get away. The "
+         "arithmetic redone in Python reproduces <b>102 of 102</b> cases read "
+         "inside the routine itself.</p>"),
     ],
 }
 
@@ -230,6 +251,49 @@ GALERIA = [
      "The road and scenery tiles that follow the font in the same block, "
      "decompressed the same way. They are the pieces the track edges and each "
      "stage's landscape are built from"),
+    ("trayectorias.png",
+     "El recorrido de los rivales, ejecutando en Python la misma cuenta que el "
+     "Z80 hace en 0x7CCB. Cada panel es tu coche a una velocidad -30, 90 y las "
+     "143 que se midieron con el acelerador clavado- y cada línea uno de los "
+     "siete rivales que 0x79A9 puede sortear. Un rival no tiene recorrido "
+     "propio: se te viene encima o se te escapa según TU velocidad, y su "
+     "posición da la vuelta entera de 0x00 a 0xFF. A tope, los tres rivales "
+     "lentos se quedan clavados a distancia fija (la línea horizontal). La "
+     "banda punteada es el umbral 0x17 donde 0x6B7D te mueve un puesto del RANK",
+     "The opponents' paths, running in Python the same arithmetic the Z80 does "
+     "at 0x7CCB. Each panel is your car at one speed -30, 90 and the 143 "
+     "measured with the accelerator held down- and each line one of the seven "
+     "opponents 0x79A9 can roll. An opponent has no path of its own: it closes "
+     "in or escapes according to YOUR speed, and its position wraps the whole "
+     "way from 0x00 to 0xFF. Flat out, the three slow ones sit at a fixed "
+     "distance (the horizontal line). The dotted band is the 0x17 threshold "
+     "where 0x6B7D moves you one place in the RANK"),
+    ("recorrido.png",
+     "Lo mismo visto como una gráfica: cuánto avanza el rival por pasada "
+     "(vertical) frente a tu velocidad (horizontal), una curva por cada "
+     "velocidad de rival. Por encima de la línea blanca lo adelantas, por "
+     "debajo se te escapa; la vertical punteada es el tope de 143. Como 0x7CCB "
+     "divide la diferencia entre 16, la escalera aplasta las siete velocidades "
+     "en cuatro comportamientos, y con el acelerador a fondo tres de ellas dan "
+     "exactamente cero",
+     "The same thing as a graph: how far the opponent moves per pass "
+     "(vertical) against your speed (horizontal), one curve per opponent "
+     "speed. Above the white line you are catching it, below it is pulling "
+     "away; the dotted vertical is the 143 top speed. Because 0x7CCB divides "
+     "the difference by 16, the staircase flattens seven speeds into four "
+     "behaviours, and flat out three of them come out at exactly zero"),
+    ("franjas.png",
+     "Por dónde te cruza un rival. El byte 1 de su ficha no dice por qué carril "
+     "viene: lo escribe 0x7D02 mirando 0xE121, la X de TU coche, repartida en "
+     "cuatro franjas (arriba, con el valor que deja cada una). Las diagonales "
+     "llevan a la X con la que 0x7F99 compara después, leída de la tabla de "
+     "0x7FEE en la ROM: casi ninguna cae debajo de la franja que la eligió",
+     "Which way an opponent crosses you. Byte 1 of its record does not say "
+     "which lane it comes from: 0x7D02 writes it from 0xE121, the X of YOUR "
+     "car, split into four bands (top, with the value each one leaves). The "
+     "diagonals lead to the X that 0x7F99 later compares against, read from "
+     "the table at 0x7FEE in the ROM: hardly any lands under the band that "
+     "chose it"),
 ]
 
 

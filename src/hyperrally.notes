@@ -206,7 +206,7 @@ C 0x434c apunta al segundo byte para el ldir
 C 0x434f tamano del bloque de etapa
 C 0x4352 pone el primer byte a cero
 C 0x4356 sube 0xE060 a la etapa siguiente
-C 0x435a arranca los dos punteros de posicion en 0x8006
+C 0x435a el RANK arranca en 680: HL=0x8006 son los dos bytes BCD
 L 0x4364 CARGA_PARAM_ETAPA  0xE061 = tabla_param_etapa[0xE060]
 C 0x4367 indexa por el numero de etapa
 L 0x4371 tabla_param_etapa_base
@@ -953,24 +953,26 @@ L 0x6b5e ALGO_6B5E  Rutina auxiliar de dibujo del panel
 C 0x6b5e dibuja una parte del panel
 D 0x6b79 0x6b7d tabla_panel  Cabecera de un rotulo del panel
 F 0x6b79 4
-L 0x6b7d COLOCA_RIVALES_VRAM  Escribe en la VRAM las X/Y de los tres rivales
-C 0x6b7d escribe la posicion de los tres rivales en la VRAM
-L 0x6b96 COLOCA_RIVALES_VRAM_6B96
-C 0x6b96 recorre las fichas de los rivales
-C 0x6b98 avanza a la ficha del rival siguiente
-L 0x6ba6 COLOCA_RIVALES_VRAM_6BA6
-L 0x6bab RIVALES_1
-C 0x6bab coloca un rival en su casilla de la VRAM
-L 0x6bb5 RIVALES_1_6BB5
-C 0x6bb5 avanza a la ficha del rival siguiente
-L 0x6bc0 RIVALES_2
-C 0x6bc0 segunda pasada de colocacion de rivales
-L 0x6bc9 RIVALES_2_6BC9
-L 0x6bcf RIVALES_2_6BCF
-C 0x6bcf ajusta la casilla del rival
-C 0x6bd5 recalcula la casilla del rival
-L 0x6bea RIVALES_2_6BEA
-C 0x6bea cierra la colocacion del rival
+L 0x6b7d ACTUALIZA_RANK  Mueve tu puesto en la carrera al cruzarte con un rival
+C 0x6b7d el RANK del panel, que empieza en 680 (0x435A pone HL=0x8006)
+L 0x6b96 ACTUALIZA_RANK_UNO
+C 0x6b96 E = donde esta el rival ahora; (HL) = donde estaba en el cuadro anterior
+C 0x6b9a con el bit alto puesto en cualquiera de los dos, no cuenta
+C 0x6ba0 el umbral del cruce: 0x17, tu altura en la carretera
+L 0x6ba6 ACTUALIZA_RANK_6BA6
+L 0x6bab RANK_DECIDE
+C 0x6bab si los dos estan al mismo lado del umbral, no ha cruzado nada
+C 0x6bad sale de la rutina entera: como mucho cuenta un cruce por cuadro
+L 0x6bb5 RANK_EMPEORA
+C 0x6bb5 te ha pasado: el numero del puesto SUBE, o sea que empeoras
+L 0x6bc0 RANK_MEJORA
+C 0x6bc0 lo has pasado tu: el puesto baja, y encima 250 puntos
+L 0x6bc9 RANK_MEJORA_6BC9
+L 0x6bcf PINTA_RANK
+C 0x6bcf repinta los tres digitos del RANK, abajo a la derecha
+C 0x6bd5 cada digito redefine el patron de su casilla
+L 0x6bea PINTA_DIGITO_RANK
+C 0x6bea saca el digito de la fuente de 0x4DEF, ocho bytes por patron
 L 0x6bfb ARRANCA_CRONO  Prepara el bloque del cronometro/resultado
 L 0x6c07 ARRANCA_CRONO_6C07
 C 0x6c07 copia un tramo del guion del cronometro
@@ -1107,9 +1109,11 @@ C 0x797f actualiza el primer rival
 C 0x7985 el segundo
 C 0x798f y el tercero
 C 0x799b recoloca los sprites tras el barrido
-L 0x79a9 ACTUALIZA_RIVALES_79A9
-C 0x79a9 elige el color aleatorio del proximo rival
-L 0x79bb ACTUALIZA_RIVALES_79BB
+L 0x79a9 SORTEA_VELOCIDAD_RIVAL
+C 0x79a9 sortea la velocidad del proximo rival (0xE09C), NO su color
+C 0x79ab la base sale de la etapa: 0xA0, y 0x88 con el bit 2 puesto
+C 0x79bb base + (R & 3) * 8: cuatro velocidades por base
+L 0x79bb SORTEA_VELOCIDAD_RIVAL_79BB
 C 0x79c8 desactiva el acelerador tras un choque (0x6957 = ret)
 L 0x79cc ACTUALIZA_RIVAL  Un rival: avanza, escala por profundidad y colisiona
 C 0x79cc avanza un rival, lo escala y mira el choque
@@ -1194,40 +1198,47 @@ L 0x7c34 ORDENA_RIVALES  Deja en HL/DE el rival mas cercano de los tres
 C 0x7c34 deja el rival mas cercano de los tres
 C 0x7c3a compara con la Y del tercer rival
 L 0x7c47 ORDENA_RIVALES_1
-L 0x7c4b MIRA_CHOQUE_RIVAL  Compara la posicion del jugador con la del rival
-C 0x7c4b compara la posicion del jugador con la del rival
-C 0x7c4f coches en la misma banda: choque posible
-L 0x7c60 CHOQUE_RIVAL_1
-C 0x7c60 mide la distancia al rival
-C 0x7c64 guarda la banda del rival
-L 0x7c7b CHOQUE_RIVAL_2
-C 0x7c7b mira si el jugador lo pisa por detras
-C 0x7c7d resta la anchura del rival
-L 0x7c8a CHOQUE_RIVAL_3
+L 0x7c4b MUEVE_RIVAL  Decide si el rival se acerca a ti o se aleja
+C 0x7c4b su UNICO efecto es mover el byte 0 de la ficha: no frena a nadie
+C 0x7c4f coches en la misma banda
+L 0x7c60 MUEVE_RIVAL_1
+C 0x7c60 HL' guarda 0xE09D, la X con la que aparecio
+C 0x7c65 C = 0xE09C, la velocidad DEL RIVAL
+C 0x7c6d B = donde esta el rival respecto a ti
+L 0x7c7b MUEVE_RIVAL_2
+C 0x7c7b lee la posicion del rival siguiente, la ficha ya elegida en circulo
+C 0x7c7d E = lo que separa a los dos rivales
+C 0x7c80 con el rival casi encima de ti (menos de 0x16)
+C 0x7c85 solo lo mueve si el otro le deja sitio de sobra
+L 0x7c8a MUEVE_RIVAL_3
 C 0x7c8a mira el solape lateral
-L 0x7c94 CHOQUE_RIVAL_4
+L 0x7c94 MUEVE_RIVAL_4
 C 0x7c94 compara las bandas de los dos coches
-L 0x7c9f CHOQUE_RIVAL_5
+L 0x7c9f MUEVE_RIVAL_5
 C 0x7c9f lee la banda del rival
 C 0x7ca1 mira si el jugador viene por detras
-L 0x7cb3 CHOQUE_RIVAL_6
-C 0x7cb3 caso de choque de frente
-L 0x7cc1 CHOQUE_RIVAL_7
-C 0x7cc1 empuja al rival al chocar
-L 0x7cc9 CHOQUE_RIVAL_7_7CC9
-L 0x7ccb IMPACTO  Frena de golpe segun la velocidad relativa del choque
-C 0x7ccb frena de golpe segun la velocidad del choque
-L 0x7cd9 IMPACTO_NEG
-C 0x7cd9 rebote con velocidad negativa
-L 0x7ce3 IMPACTO_APLICA
+L 0x7cb3 MUEVE_RIVAL_6
+C 0x7cb3 el rival, justo delante
+L 0x7cc1 MUEVE_RIVAL_7
+C 0x7cc1 lo empuja dos posiciones, con suelo en 1
+L 0x7cc9 MUEVE_RIVAL_7_7CC9
+L 0x7ccb AVANZA_RIVAL  El motor del recorrido: (velocidad del rival - la tuya) / 16
+C 0x7ccb NO es un impacto: en 45 s sin un solo golpe pasa por aqui 1329 veces
+C 0x7cce la velocidad del jugador menos la del rival
+L 0x7cd9 AVANZA_RIVAL_SE_ESCAPA
+C 0x7cd9 el rival corre mas que tu: el resultado sale con signo cambiado
+L 0x7ce3 AVANZA_RIVAL_APLICA
+C 0x7ce6 la unica escritura del byte 0 de la ficha en todo el cartucho
 L 0x7ce8 DETECTA_CHOQUE  Comprueba si el jugador ha alcanzado a un rival
 C 0x7ce8 comprueba si el jugador alcanza al rival
 C 0x7cea lee la banda del rival alcanzado
 L 0x7cfa DETECTA_CHOQUE_7CFA
-L 0x7d02 DETECTA_CHOQUE_7D02
-C 0x7d02 mide el solape con el rival alcanzado
-C 0x7d07 fuera del margen no hay choque
-L 0x7d17 DETECTA_CHOQUE_7D17
+L 0x7d02 FIJA_FRANJA_CRUCE  Apunta por que franja te cruza el rival
+C 0x7d02 el byte 1 de la ficha sale de la X del JUGADOR, no de la del rival
+C 0x7d04 0xE121 es la X del primer sprite del coche del jugador
+C 0x7d07 cuatro franjas: 0 / 3 / 4 / 1 de izquierda a derecha
+L 0x7d17 FIJA_FRANJA_CRUCE_ESCRIBE
+C 0x7d17 medido: 975 escrituras, todas dentro de su franja
 L 0x7d19 SONIDO_ETAPA  Arranca las melodias/efectos de fondo de la etapa
 C 0x7d19 arranca las melodias de fondo de la etapa
 L 0x7d32 REACCION_CHOQUE  Sacude el coche tras un impacto
@@ -1245,20 +1256,22 @@ C 0x7f65 elige donde aparece el proximo rival
 C 0x7f69 solo decide en la fase 0
 C 0x7f6a por defecto, a la derecha
 L 0x7f84 SPAWN_1
-L 0x7f89 CHOQUE_OBSTACULO  Mira si el jugador toca un obstaculo y frena
-L 0x7f8e OBSTACULO_BUCLE
-C 0x7f8e recorre los tres obstaculos posibles
-C 0x7f99 el ancho del obstaculo sale de la tabla 0x7FEE
-L 0x7fa9 OBSTACULO_1
-L 0x7fac OBSTACULO_CHOCA
-C 0x7fac frena a la mitad al tocar un obstaculo
+L 0x7f89 CHOQUE_CONTRA_RIVAL  Mira si el jugador toca a un rival y frena
+C 0x7f89 0xE08E + 2 = 0xE090: son las MISMAS tres fichas de rival
+L 0x7f8e CHOQUE_RIVAL_BUCLE
+C 0x7f8e recorre las tres fichas, tres bytes cada una
+C 0x7f92 solo con el rival a menos de 0x20 de ti
+C 0x7f99 la X del cruce sale de la tabla 0x7FEE, por el byte 1 de la ficha
+L 0x7fa9 CHOQUE_RIVAL_NO
+L 0x7fac CHOQUE_RIVAL_SI
+C 0x7fac frena a la mitad al tocar al rival
 C 0x7fb0 parte la velocidad por la mitad
-L 0x7fc1 OBSTACULO_CHOCA_7FC1
-C 0x7fc1 marca el golpe contra el obstaculo
+L 0x7fc1 CHOQUE_RIVAL_SI_7FC1
+C 0x7fc1 marca el golpe contra el rival
 C 0x7fc4 guarda la posicion del golpe
-L 0x7fd6 OBSTACULO_CHOCA_7FD6
-L 0x7fdf OBSTACULO_CHOCA_7FDF
-C 0x7fdf cierra la reaccion al obstaculo
-L 0x7fe8 OBSTACULO_CHOCA_7FE8
-D 0x7fee 0x7ff5 tabla_ancho_choque  Ancho de golpe de cada obstaculo (cierra en 0xFF)
+L 0x7fd6 CHOQUE_RIVAL_SI_7FD6
+L 0x7fdf CHOQUE_RIVAL_SI_7FDF
+C 0x7fdf cierra la reaccion al golpe
+L 0x7fe8 CHOQUE_RIVAL_SI_7FE8
+D 0x7fee 0x7ff5 tabla_x_del_cruce  X con la que se compara la del jugador, por franja de cruce
 D 0x7ff5 0x8000 marca_konami  La marca oculta de Konami: RC-718 en katakana (la hallo Manuel Pazos)

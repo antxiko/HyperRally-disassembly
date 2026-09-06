@@ -114,11 +114,129 @@ when closer.
 Where the next one appears is 0x7F65, and only on phase 0 of 0xE003: half the
 time (from the refresh register) the X is 0x1F, and otherwise it comes from
 (stage − 1) mod 4 — 0x7F, 0x5F, 0x3F, 0x1F. It **cycles every four stages**
-rather than growing with the stage.
+rather than growing with the stage. Measured on all twelve, the appearance X is
+exactly what that arithmetic predicts, with no exception.
 
-Still open: the record byte cycles the whole way from 0x00 to 0xFF, so it is a
-relative position that wraps rather than a depth, and the trajectories are not
-documented yet.
+## An opponent has no path of its own
+
+The three-byte record is settled by putting a write watchpoint on each byte and
+only recording program counters (`tools/omsx_recorrido.tcl`). Over 45 seconds of
+racing, **each byte has exactly one writer** and nothing else touches it:
+
+| byte | written by | times |
+|---|---|---|
+| 0xE090 | 0x7CE6 | 425 |
+| 0xE091 | 0x7D17 | 270 |
+| 0xE092 | 0x79D5 | 682 |
+
+Byte 0 is the position relative to you — it wraps the whole way round. Byte 1
+is which way the opponent crosses you. And byte 2 is not a property of the
+opponent at all: it is **byte 0 as it was on the previous frame**.
+
+**0x7CCB is not an impact.** The listing called it that and said it braked hard
+on the collision speed, and it does not touch your speed at all. The only thing
+it writes is byte 0:
+
+    ld a,(0e085h) / sub c / rrca x4 / and 00fh    ; (with neg on both sides)
+    ld a,(hl) / sub c / ld (hl),a
+
+that is, **byte 0 += (opponent's speed − yours) / 16**. It is the whole engine
+of the approach, and there is no other write to byte 0 anywhere in the
+cartridge. In a 45-second race with **zero collisions** — 0x7FAC, where a hit is
+taken as real, fired 0 times, and so did the shake at 0x7D32 — it ran **1329
+times** in that same pass.
+
+The formula was checked without any sampling in between, reading the player's
+speed and the opponent's on entry to 0x7CCB and the register A the Z80 had
+worked out on the way out (`tools/omsx_paso_rival.tcl`). Redone in Python it
+reproduces **102 of 102** distinct cases over those 1329 passes
+(`tools/control_recorrido.py`, and `make control` runs it).
+
+## 0xE09C is not a colour, it is the opponent's speed
+
+The listing said 0x79A9 "picks the next opponent's random colour". That byte
+**never reaches the VRAM**: the only place that reads it is 0x7C65, inside the
+subtraction above. Forcing it settles it — same pilot, same 45 seconds:
+
+| 0xE09C | byte 0 goes up | goes down | net |
+|---|---|---|---|
+| forced to 0x00 | **never** | 1535 | −9788 |
+| forced to 0xFF | 1357 | **never** | +13298 |
+| left alone | 1327 | 0 | +5989 |
+
+With the opponent "stopped" you eat all of them; with it flat out they all get
+away. The sign flips entirely. A colour would change nothing.
+
+0x79A9 rolls it as **base + (R & 3) × 8**, and the base comes from the stage:
+0xA0, or 0x88 when bit 2 of 0xE060 is set. So stages 4-7 and 12 are the ones
+that can produce opponents **slower than you** (0x88 = 136 against a measured
+top speed of 143), and those are the ones you catch from behind.
+
+## Byte 1 is where YOU were, not which lane it came from
+
+0x7D02 writes it from 0xE121, the X of the first sprite of the player's car, in
+four bands. With the pilot sweeping the road side to side, 975 passes through
+the `ld (hl),e` at 0x7D17:
+
+| byte 1 | X measured | band in the code |
+|---|---|---|
+| 0 | 44..88 | < 0x59 |
+| 3 | 90..112 | 0x59..0x70 |
+| 4 | 114..152 | 0x71..0x98 |
+| 1 | 154..195 | ≥ 0x99 |
+
+975 out of 975 inside their own band, no exceptions. (89 never shows up because
+the car's X moves two at a time.)
+
+## 0x6B7D does not write to the VRAM: it is the RANK counter
+
+It was called COLOCA_RIVALES_VRAM and it does not write a single cell. What it
+does is compare byte 0 against byte 2 — where the opponent is now against where
+it was last frame — over the **0x17** threshold, and when one crosses it, move
+the three-digit BCD number at 0xE05B/0xE05C: up through 0x6BB5, down through
+0x6BC0, and that one also pays SUMA_PUNTOS 0x0250. It leaves through a
+`pop hl`, so it moves **at most one place per frame**.
+
+That number is the **RANK** in the bottom right of the dashboard, and you start
+the race **680th**: 0x435A loads HL with 0x8006 and drops it into 0xE05B, which
+is 0680 in BCD. So an opponent passing you costs you a place and one you pass
+gains you one, plus 250 points.
+
+Measured over 45 seconds with the accelerator held down and never steering, the
+rank went from 0680 to 0704 — **24 places lost** — and the up branch fired
+exactly **24** times, the down branch 0. Which is what should happen: every
+opponent in that stage is faster than a car pinned at 143.
+
+## Are there more crossing cars in the later stages?
+
+Not at the same driving, no. Twelve runs, one per stage, same pilot with the
+accelerator held down, 40 seconds each (`tools/omsx_cruces_etapa.tcl`):
+
+| stage | bit 2 | crossings | opponent speeds | appearance X |
+|---|---|---|---|---|
+| 1 | 0 | 18 | A0 A8 B0 B8 | 1F, 7F |
+| 2 | 0 | 17 | A0 A8 B0 B8 | 1F, 5F |
+| 3 | 0 | 17 | A0 A8 B0 B8 | 1F, 3F |
+| 4 | 1 | 15 | **88 90 98** + A0 A8 B0 B8 | 1F |
+| 5 | 1 | 15 | **88 90 98** + A0 A8 B0 B8 | 1F, 7F |
+| 6 | 1 | 15 | **88 90 98** + A0 A8 B0 B8 | 1F, 5F |
+| 7 | 1 | 15 | **88 90 98** + A0 A8 B0 B8 | 1F, 3F |
+| 8 | 0 | 18 | A0 A8 B0 B8 | 1F |
+| 9 | 0 | 17 | A0 A8 B0 B8 | 1F, 7F |
+| 10 | 0 | 17 | A0 A8 B0 B8 | 1F, 5F |
+| 11 | 0 | 18 | A0 A8 B0 B8 | 1F, 3F |
+| 12 | 1 | 14 | **88 90 98** + A0 A8 B0 B8 | 1F |
+
+The crossings do not grow with the stage — 14 to 18 across all twelve — and the
+stages with bit 2 set have **fewer**, not more. What the stage does change is
+the other two columns: the appearance X cycles every four, and stages 4-7 and 12
+put slower opponents on the road. A slower opponent is one you come up behind
+and sit next to instead of one that flashes past, which stays on screen far
+longer.
+
+The pilot in these runs never steers and always tops out at 143, so the numbers
+compare stages against each other — which is the question — and are not an
+absolute count for a real race.
 
 ## The storm stage throws lightning
 

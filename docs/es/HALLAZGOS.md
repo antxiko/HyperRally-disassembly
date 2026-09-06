@@ -116,11 +116,130 @@ tiles al acercarse.
 Dónde aparece el siguiente lo decide 0x7F65, y sólo en la fase 0 de 0xE003: la
 mitad de las veces (por el registro de refresco) la X es 0x1F, y si no sale de
 (etapa − 1) mod 4 — 0x7F, 0x5F, 0x3F, 0x1F. **Cicla cada cuatro etapas**, no
-crece con la etapa.
+crece con la etapa. Medida en las doce, la X de aparición es exactamente la que
+predice esa cuenta, sin una sola excepción.
 
-Queda abierto: el byte de la ficha da la vuelta entera de 0x00 a 0xFF, o sea que
-es una posición relativa que cicla y no una profundidad, y las trayectorias no
-están documentadas todavía.
+## Un rival no tiene recorrido propio
+
+La ficha de tres bytes se cierra poniendo un punto de observación de escritura
+sobre cada byte y apuntando sólo contadores de programa
+(`tools/omsx_recorrido.tcl`). En 45 segundos de carrera, **cada byte tiene
+exactamente un escritor** y nadie más lo toca:
+
+| byte | quién lo escribe | veces |
+|---|---|---|
+| 0xE090 | 0x7CE6 | 425 |
+| 0xE091 | 0x7D17 | 270 |
+| 0xE092 | 0x79D5 | 682 |
+
+El byte 0 es la posición relativa a ti, y da la vuelta entera. El byte 1 es por
+dónde te cruza. Y el byte 2 no es una propiedad del rival: es **el byte 0 tal
+como estaba el cuadro anterior**.
+
+**0x7CCB no es un impacto.** El listado lo llamaba así y decía que frenaba de
+golpe según la velocidad del choque, y no toca tu velocidad para nada. Lo único
+que escribe es el byte 0:
+
+    ld a,(0e085h) / sub c / rrca x4 / and 00fh    ; (con neg a los dos lados)
+    ld a,(hl) / sub c / ld (hl),a
+
+o sea **byte 0 += (velocidad del rival − la tuya) / 16**. Es el motor entero del
+acercamiento, y no hay ninguna otra escritura sobre el byte 0 en todo el
+cartucho. En una carrera de 45 segundos con **cero choques** —0x7FAC, donde un
+golpe se da por bueno, saltó 0 veces, y la sacudida de 0x7D32 tampoco— corrió
+**1329 veces** en esa misma pasada.
+
+La fórmula se comprobó sin ningún muestreo por medio, leyendo la velocidad del
+jugador y la del rival a la entrada de 0x7CCB y el registro A que el Z80 había
+calculado a la salida (`tools/omsx_paso_rival.tcl`). Rehecha en Python
+reproduce **102 de 102** casos distintos sobre esas 1329 pasadas
+(`tools/control_recorrido.py`, y `make control` lo ejecuta).
+
+## 0xE09C no es un color: es la velocidad del rival
+
+El listado decía que 0x79A9 "elige el color aleatorio del próximo rival". Ese
+byte **no llega nunca a la VRAM**: el único sitio que lo lee es 0x7C65, dentro
+de la resta de arriba. Forzarlo lo zanja —mismo piloto, mismos 45 segundos—:
+
+| 0xE09C | el byte 0 sube | baja | neto |
+|---|---|---|---|
+| forzado a 0x00 | **ninguna vez** | 1535 | −9788 |
+| forzado a 0xFF | 1357 | **ninguna vez** | +13298 |
+| sin tocar | 1327 | 0 | +5989 |
+
+Con el rival "parado" te los comes a todos; con el rival a tope se te escapan
+todos. El signo se invierte entero. Si fuese un color no cambiaría nada.
+
+0x79A9 lo sortea como **base + (R & 3) × 8**, y la base sale de la etapa: 0xA0, o
+0x88 con el bit 2 de 0xE060 puesto. O sea que las etapas 4-7 y 12 son las que
+pueden dar rivales **más lentos que tú** (0x88 = 136 contra un tope medido de
+143), y a ésos los alcanzas por detrás.
+
+## El byte 1 es dónde estabas TÚ, no el carril del que venía
+
+0x7D02 lo escribe mirando 0xE121, la X del primer sprite del coche del jugador,
+repartida en cuatro franjas. Con el piloto barriendo la carretera de lado a
+lado, 975 pasadas por el `ld (hl),e` de 0x7D17:
+
+| byte 1 | X medida | franja en el código |
+|---|---|---|
+| 0 | 44..88 | < 0x59 |
+| 3 | 90..112 | 0x59..0x70 |
+| 4 | 114..152 | 0x71..0x98 |
+| 1 | 154..195 | ≥ 0x99 |
+
+975 de 975 dentro de su franja, cero excepciones. (El 89 no aparece porque la X
+del coche va de dos en dos.)
+
+## 0x6B7D no escribe en la VRAM: es el marcador RANK
+
+Se llamaba COLOCA_RIVALES_VRAM y no escribe una sola casilla. Lo que hace es
+comparar el byte 0 con el byte 2 —dónde está el rival ahora contra dónde estaba
+el cuadro anterior— contra el umbral **0x17**, y cuando uno lo cruza, mueve el
+número BCD de tres dígitos de 0xE05B/0xE05C: arriba por 0x6BB5, abajo por
+0x6BC0, y ésa además paga SUMA_PUNTOS 0x0250. Sale por un `pop hl`, así que
+mueve **como mucho un puesto por cuadro**.
+
+Ese número es el **RANK** de abajo a la derecha del salpicadero, y se empieza la
+carrera **el 680**: 0x435A carga HL con 0x8006 y lo mete en 0xE05B, que en BCD
+es 0680. O sea que un rival que te pasa te cuesta un puesto y uno al que pasas
+te gana uno, más 250 puntos.
+
+Medido en 45 segundos con el acelerador clavado y sin girar nunca, el puesto
+pasó de 0680 a 0704 —**24 puestos perdidos**— y la rama que sube saltó
+exactamente **24** veces, la que baja 0. Que es lo que tiene que pasar: en esa
+etapa todos los rivales son más rápidos que un coche clavado a 143.
+
+## ¿Hay más coches cruzando en las etapas altas?
+
+A igualdad de conducción, no. Doce pasadas, una por etapa, mismo piloto con el
+acelerador clavado, 40 segundos cada una (`tools/omsx_cruces_etapa.tcl`):
+
+| etapa | bit 2 | cruces | velocidades del rival | X de aparición |
+|---|---|---|---|---|
+| 1 | 0 | 18 | A0 A8 B0 B8 | 1F, 7F |
+| 2 | 0 | 17 | A0 A8 B0 B8 | 1F, 5F |
+| 3 | 0 | 17 | A0 A8 B0 B8 | 1F, 3F |
+| 4 | 1 | 15 | **88 90 98** + A0 A8 B0 B8 | 1F |
+| 5 | 1 | 15 | **88 90 98** + A0 A8 B0 B8 | 1F, 7F |
+| 6 | 1 | 15 | **88 90 98** + A0 A8 B0 B8 | 1F, 5F |
+| 7 | 1 | 15 | **88 90 98** + A0 A8 B0 B8 | 1F, 3F |
+| 8 | 0 | 18 | A0 A8 B0 B8 | 1F |
+| 9 | 0 | 17 | A0 A8 B0 B8 | 1F, 7F |
+| 10 | 0 | 17 | A0 A8 B0 B8 | 1F, 5F |
+| 11 | 0 | 18 | A0 A8 B0 B8 | 1F, 3F |
+| 12 | 1 | 14 | **88 90 98** + A0 A8 B0 B8 | 1F |
+
+Los cruces no crecen con la etapa —de 14 a 18 en las doce— y las etapas con el
+bit 2 puesto tienen **menos**, no más. Lo que sí cambia con la etapa son las
+otras dos columnas: la X de aparición cicla cada cuatro, y las etapas 4-7 y 12
+ponen rivales más lentos en la carretera. Un rival lento es uno al que llegas
+por detrás y con el que te quedas emparejado, en vez de uno que te pasa de
+largo, y ése se queda en pantalla mucho más rato.
+
+El piloto de estas pasadas no gira nunca y siempre llega a 143, así que los
+números comparan unas etapas con otras —que es lo que se pregunta— y no son una
+cuenta absoluta de una carrera de verdad.
 
 ## La etapa de tormenta echa rayos
 
