@@ -2,21 +2,25 @@
 """Dibuja el recorrido de los rivales, ejecutando la aritmetica del cartucho.
 
 El issue #3 pedia los "recorridos" de los coches rivales, y algo grafico. Aqui
-no hay ni una captura del emulador: las dos imagenes se dibujan ejecutando en
-Python las mismas cuentas que el Z80 hace en el cartucho, y los numeros que no
-son cuentas se leen de la ROM.
+no hay ni una captura del emulador: las curvas se dibujan ejecutando en Python
+las mismas cuentas que el Z80 hace en el cartucho, y los numeros que no son
+cuentas se leen de la ROM. Los ROTULOS son anotacion, con la fuente de
+tools/rotulos.py, porque la del cartucho tiene el alfabeto incompleto y un
+diagrama sin rotular no se entiende.
 
-  recorrido.png  la posicion relativa de un rival cuadro a cuadro, una curva
-                 por cada una de las siete velocidades que 0x79A9 le puede
-                 sortear. El paso lo da 0x7CCB:
-                     byte 0 -= (velocidad del jugador - la del rival) >> 4
-                 comprobado caso por caso contra el emulador en
-                 tools/control_recorrido.py (102 de 102).
+  recorrido.png     cuanto se mueve el rival en cada pasada, frente a TU
+                    velocidad. El paso lo da 0x7CCB:
+                        byte 0 -= (velocidad del jugador - la del rival) >> 4
+                    comprobado caso por caso contra el emulador en
+                    tools/control_recorrido.py (102 de 102).
 
-  franjas.png    por donde te cruza el rival. 0x7D02 mira 0xE121 -la X de TU
-                 coche- y reparte en cuatro franjas; el byte 1 que deja es el
-                 indice con el que 0x7F99 lee la tabla de 0x7FEE, que se lee
-                 aqui DE LA ROM y no se escribe a mano.
+  trayectorias.png  lo mismo contado como recorrido: donde esta el rival cuadro
+                    a cuadro, con tu coche a tres velocidades.
+
+  franjas.png       por donde te cruza el rival. 0x7D02 mira 0xE121 -la X de TU
+                    coche- y reparte en cuatro franjas; el byte 1 que deja es el
+                    indice con el que 0x7F99 lee la tabla de 0x7FEE, que se lee
+                    aqui DE LA ROM y no se escribe a mano.
 
 Uso: recorrido.py <rom> <org> <notas> <destino>
 """
@@ -24,29 +28,32 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from graficos import png, rango_por_nombre, desc_3_tercios   # noqa: E402
+from graficos import png, rango_por_nombre                  # noqa: E402
+import rotulos as R                                         # noqa: E402
 
 # --- lo que el cartucho decide, con su direccion --------------------------
 # 0x79A9: base + (R & 3) * 8, con la base segun el bit 2 de la etapa
-BASES = {0xA0: "etapas con el bit 2 a cero", 0x88: "etapas 4-7 y 12"}
-VELOCIDADES = [b + i * 8 for b in (0x88, 0xA0) for i in range(4)]
-VELOCIDADES = sorted(set(VELOCIDADES))
+VELOCIDADES = sorted({b + i * 8 for b in (0x88, 0xA0) for i in range(4)})
 # 0x79D8 y 0x7A04: los dos cortes que reparten el dibujo en tres niveles
 CORTES = (0x26, 0x38)
 SESGO = 0x10                      # el `add a,010h` que precede a los cortes
-UMBRAL_CRUCE = 0x17               # 0x6BA0, donde se cuenta el cruce
+UMBRAL_CRUCE = 0x17               # 0x6BA0, donde se mueve el RANK
 VEL_TOPE = 143                    # medido: el tope con el acelerador clavado
 
-FONDO = (0x1A, 0x1A, 0x26)
-REJA = (0x2E, 0x2E, 0x40)
-TINTA = (0xF0, 0xF0, 0xE0)
-APAGADO = (0x6A, 0x6A, 0x80)
+FONDO = (0x16, 0x17, 0x21)
+PANEL = (0x1F, 0x21, 0x2E)
+REJA = (0x33, 0x36, 0x48)
+TINTA = (0xF2, 0xF2, 0xEA)
+FLOJO = (0x8A, 0x90, 0xA8)
+VERDE = (0x2A, 0x3C, 0x33)
+ROJO = (0x3C, 0x2A, 0x33)
 # las tres bandas de dibujo, de lejos a cerca
-BANDAS = [(0x28, 0x30, 0x48), (0x30, 0x3C, 0x50), (0x3E, 0x30, 0x40)]
+BANDAS = [(0x24, 0x2B, 0x3E), (0x2C, 0x35, 0x48), (0x38, 0x2C, 0x3C)]
+NOMBRE_BANDA = ["LEJOS: CUATRO SPRITES", "MEDIO", "CERCA: CASILLAS"]
 # una curva por velocidad de rival: frias las lentas, calidas las rapidas
-CURVAS = [(0x7C, 0xD0, 0x7D), (0x9C, 0xD8, 0x66), (0xC8, 0xD8, 0x5A),
-          (0xE8, 0xC8, 0x50), (0xF0, 0xA0, 0x50), (0xF0, 0x78, 0x58),
-          (0xE8, 0x58, 0x68)]
+CURVAS = [(0x6E, 0xC8, 0x8A), (0x9A, 0xD4, 0x70), (0xC6, 0xD6, 0x5E),
+          (0xE6, 0xC6, 0x54), (0xF0, 0xA2, 0x52), (0xF0, 0x7C, 0x5C),
+          (0xE6, 0x5C, 0x6C)]
 
 
 class Lienzo:
@@ -60,132 +67,141 @@ class Lienzo:
             self.px[i:i + 3] = bytes(c)
 
     def caja(self, x0, y0, x1, y1, c):
-        for y in range(max(0, y0), min(self.h, y1)):
-            for x in range(max(0, x0), min(self.w, x1)):
+        for y in range(max(0, int(y0)), min(self.h, int(y1))):
+            for x in range(max(0, int(x0)), min(self.w, int(x1))):
                 self.pon(x, y, c)
 
-    def punto(self, x, y, c, r=1):
-        for dy in range(-r, r + 1):
-            for dx in range(-r, r + 1):
-                self.pon(x + dx, y + dy, c)
+    def texto(self, x, y, s, c=TINTA, esc=1):
+        return R.escribe(self.pon, x, y, s, c, esc)
+
+    def centrado(self, x0, x1, y, s, c=TINTA, esc=1):
+        return self.texto((x0 + x1 - R.ancho(s, esc)) // 2, y, s, c, esc)
+
+    def derecha(self, x, y, s, c=TINTA, esc=1):
+        return self.texto(x - R.ancho(s, esc), y, s, c, esc)
 
     def guardar(self, ruta):
         png(self.w, self.h, self.px, ruta)
 
 
-def glifos(rom, org, notas):
-    """Los patrones de la fuente del cartucho, ya descomprimidos. El digito n
-    es el patron 0x10+n (se ve en fuente.png, que sale del mismo bloque)."""
-    ini, _ = rango_por_nombre(notas, "fuente_y_graficos")
-    vram = bytearray(0x4000)
-    desc_3_tercios(rom, org, ini, vram, 0x2000)
-    return vram
-
-
-def cifra(lienzo, vram, x, y, n, c=TINTA, esc=1):
-    """Escribe un numero con la fuente DEL CARTUCHO, no con una de fuera."""
-    for k, d in enumerate(str(n)):
-        base = 0x2000 + (0x10 + int(d)) * 8
-        for f in range(8):
-            v = vram[base + f]
-            for b in range(8):
-                if (v >> (7 - b)) & 1:
-                    for a in range(esc):
-                        for e in range(esc):
-                            lienzo.pon(x + k * 8 * esc + b * esc + e,
-                                       y + f * esc + a, c)
-
-
 def paso(vel, vrival):
-    """0x7CCB, instruccion a instruccion. Lo que se le RESTA al byte 0."""
+    """0x7CCB, instruccion a instruccion. Lo que se le RESTA al byte 0.
+
+    OJO con el cero: el `neg` final de 0x7CD9 sobre un nibble que ya es cero
+    deja cero, no -256. Escrito de otra forma salen saltos de una punta a otra
+    del diagrama, que fue justo lo que paso al reescribir esto."""
     a = (vel - vrival) & 0xFF
-    if vel >= vrival:
+    if vel >= vrival:                          # sub sin acarreo
         return (a >> 4) & 0x0F
-    a = (-a) & 0xFF
-    return (-((a >> 4) & 0x0F)) & 0xFF - 256
+    return -((((-a) & 0xFF) >> 4) & 0x0F)      # neg, >>4, neg
 
 
 def nivel(byte0):
-    """0x79D8 / 0x7A04: en que nivel de cercania cae, y con el `add a,010h`."""
+    """0x79D8 / 0x7A04: en que nivel de cercania cae, con el `add a,010h`."""
     a = (byte0 + SESGO) & 0xFF
-    if a < CORTES[0]:
-        return 0
-    return 1 if a < CORTES[1] else 2
+    return 0 if a < CORTES[0] else (1 if a < CORTES[1] else 2)
 
 
-def dibuja_recorrido(ruta, vram):
-    """El paso del rival frente a TU velocidad, una curva por cada velocidad
-    que 0x79A9 le puede sortear.
+# ---------------------------------------------------------------------------
+def dibuja_recorrido(ruta):
+    """Cuanto se mueve el rival en cada pasada, frente a TU velocidad."""
+    esc, izq, arr = 2, 92, 62
+    ancho, alto = 256 * esc, 19 * 14
+    L = Lienzo(izq + ancho + 132, arr + alto + 74)
 
-    Lo que se ve es que un rival no tiene recorrido propio: lo que hace depende
-    entera y solamente de la diferencia con tu velocidad. Y que la division por
-    16 machaca esa diferencia, asi que las siete velocidades distintas se
-    quedan en cuatro comportamientos."""
-    esc, izq, arr = 2, 52, 24
-    ancho, alto = 256 * esc, 23 * 12          # los pasos van de +7 a -11
-    L = Lienzo(izq + ancho + 60, arr + alto + 34)
+    def ay(p):
+        return arr + (7 - p) * 14
 
-    def ay(p):                                 # el paso p, a pixel
-        return arr + (7 - p) * 12
+    L.texto(20, 16, "CUANTO SE ACERCA UN RIVAL EN CADA PASADA", TINTA, 2)
+    L.texto(20, 36, "0x7CCB:  SU POSICION += (SU VELOCIDAD - LA TUYA) / 16",
+            FLOJO, 1)
 
-    # la banda de arriba, donde el rival se queda atras y lo adelantas
-    L.caja(izq, arr, izq + ancho, ay(0), (0x24, 0x34, 0x2C))
-    L.caja(izq, ay(0), izq + ancho, arr + alto, (0x34, 0x28, 0x30))
-    # el cero: por encima lo adelantas, por debajo se te escapa
-    L.caja(izq, ay(0), izq + ancho, ay(0) + 1, TINTA)
+    L.caja(izq, arr, izq + ancho, ay(0), VERDE)
+    L.caja(izq, ay(0), izq + ancho, arr + alto, ROJO)
     for p in range(-10, 8, 2):
         if p:
             L.caja(izq, ay(p), izq + ancho, ay(p) + 1, REJA)
-        cifra(L, vram, 22 if abs(p) < 10 else 14, ay(p) - 3, abs(p), APAGADO)
+        L.derecha(izq - 10, ay(p) - 3, "%+d" % p if p else "0", FLOJO)
     for v in range(0, 257, 32):
         L.caja(izq + v * esc, arr, izq + v * esc + 1, arr + alto, REJA)
-        cifra(L, vram, izq + v * esc - 8, arr + alto + 6, v, APAGADO)
+        L.centrado(izq + v * esc - 12, izq + v * esc + 12, arr + alto + 10,
+                   str(v), FLOJO)
+    L.caja(izq, ay(0), izq + ancho, ay(0) + 2, TINTA)
 
-    # el tope de velocidad que se midio con el acelerador clavado
-    for y in range(arr, arr + alto, 6):
-        L.caja(izq + VEL_TOPE * esc, y, izq + VEL_TOPE * esc + 1, y + 3, TINTA)
+    # que significa cada mitad, escrito DENTRO de su mitad
+    L.texto(izq + 12, arr + 10, "ARRIBA DEL CERO: LO VAS ALCANZANDO",
+            (0x86, 0xC8, 0x96))
+    L.texto(izq + 12, arr + alto - 20, "DEBAJO: SE TE ESCAPA", (0xE0, 0x8A, 0x96))
+
+    # el tope de velocidad medido
+    for y in range(arr, arr + alto, 8):
+        L.caja(izq + VEL_TOPE * esc, y, izq + VEL_TOPE * esc + 1, y + 4, TINTA)
+    L.texto(izq + VEL_TOPE * esc + 5, arr - 14, "TU TOPE: 143", TINTA)
 
     ocupadas = []
     for i, vr in enumerate(VELOCIDADES):
         antes = None
         for v in range(256):
-            p = -paso(v, vr)                   # lo que se le suma al byte 0
+            p = -paso(v, vr)
             x, y = izq + v * esc, ay(p)
             if antes is not None:
                 y0, y1 = sorted((antes, y))
-                L.caja(x, y0, x + esc, y1 + 2, CURVAS[i])
-            L.caja(x, y, x + esc, y + 2, CURVAS[i])
+                L.caja(x, y0, x + esc, y1 + 3, CURVAS[i])
+            L.caja(x, y, x + esc, y + 3, CURVAS[i])
             antes = y
-        # la etiqueta al final de su curva, bajada si ya hay otra en esa altura
         y = ay(-paso(255, vr)) - 3
-        while any(abs(y - o) < 9 for o in ocupadas):
-            y += 9
+        while any(abs(y - o) < 11 for o in ocupadas):
+            y += 11
         ocupadas.append(y)
-        cifra(L, vram, izq + ancho + 6, y, vr, CURVAS[i])
+        L.caja(izq + ancho, y + 3, izq + ancho + 8, y + 5, CURVAS[i])
+        L.texto(izq + ancho + 12, y, str(vr), CURVAS[i])
 
+    L.texto(izq, arr + alto + 30, "EJE HORIZONTAL: TU VELOCIDAD (0xE085)", FLOJO)
+    L.texto(izq, arr + alto + 44,
+            "CADA LINEA, UNA DE LAS SIETE VELOCIDADES QUE 0x79A9 LE SORTEA "
+            "AL RIVAL (0xE09C)", FLOJO)
+    L.derecha(izq - 10, arr - 30, "PASOS", FLOJO)
+    L.derecha(izq - 10, arr - 18, "POR PASADA", FLOJO)
     L.guardar(ruta)
     return len(VELOCIDADES)
 
 
-def dibuja_trayectorias(ruta, vram, cuadros=150):
-    """Lo mismo, contado como recorrido: donde esta el rival cuadro a cuadro,
-    con tu coche a tres velocidades. El byte 0 envuelve, asi que un rival que
-    se te escapa reaparece por detras."""
-    esc, izq, arr = 3, 46, 18
+# ---------------------------------------------------------------------------
+def dibuja_trayectorias(ruta, cuadros=150):
+    """Donde esta el rival cuadro a cuadro, con tu coche a tres velocidades."""
+    esc, izq, arr = 3, 92, 88
     alto, ancho = 256, cuadros * esc
-    paneles = [(30, "parado"), (90, "a media"), (VEL_TOPE, "a tope")]
-    L = Lienzo(izq + ancho + 40, (arr + alto + 22) * len(paneles))
+    paneles = [(30, "ARRANCANDO"), (90, "A MEDIO GAS"), (VEL_TOPE, "A TOPE")]
+    salto = alto + 62
+    L = Lienzo(izq + ancho + 158, arr + salto * len(paneles) + 20)
 
-    for n, (vjug, _) in enumerate(paneles):
-        base = n * (arr + alto + 22) + arr
+    L.texto(20, 16, "DONDE ESTA EL RIVAL, CUADRO A CUADRO", TINTA, 2)
+    L.texto(20, 36, "LA MISMA CUENTA DE 0x7CCB, REPETIDA "
+            "%d CUADROS (UNOS TRES SEGUNDOS)" % cuadros, FLOJO)
+    L.texto(20, 50, "CADA LINEA ES UN RIVAL. LO UNICO QUE CAMBIA ENTRE LOS TRES "
+            "PANELES ES TU VELOCIDAD", FLOJO)
+
+    for n, (vjug, mote) in enumerate(paneles):
+        base = arr + n * salto
         for y in range(alto):
             L.caja(izq, base + y, izq + ancho, base + y + 1, BANDAS[nivel(y)])
-        for x in range(izq, izq + ancho, 4):   # el umbral del cruce
-            L.caja(x, base + UMBRAL_CRUCE, x + 2, base + UMBRAL_CRUCE + 1, TINTA)
-        for y in range(0, alto, 64):
-            L.caja(izq, base + y, izq + ancho, base + y + 1, REJA)
-            cifra(L, vram, 6, base + y - 3, y, APAGADO)
-        cifra(L, vram, izq + ancho + 6, base + 2, vjug, TINTA)
+        # el titulo del panel
+        L.texto(izq, base - 16, "TU VELOCIDAD: %d  (%s)" % (vjug, mote), TINTA)
+        # el umbral: aqui es donde el rival esta a tu altura
+        for x in range(izq, izq + ancho, 5):
+            L.caja(x, base + UMBRAL_CRUCE, x + 3, base + UMBRAL_CRUCE + 1, TINTA)
+        L.texto(izq + ancho + 8, base + UMBRAL_CRUCE - 3,
+                "A TU ALTURA: AQUI CAMBIA EL RANK", TINTA)
+        for y in range(0, alto + 1, 64):
+            if y:
+                L.caja(izq, base + y, izq + ancho, base + y + 1, REJA)
+            L.derecha(izq - 10, base + y - 3, str(min(y, 255)), FLOJO)
+        # el nombre de cada banda de dibujo, dentro de su banda
+        for b in (0, 1, 2):
+            ys = [y for y in range(alto) if nivel(y) == b]
+            if ys and n == 0:
+                L.texto(izq + 6, base + (min(ys) + max(ys)) // 2 - 3,
+                        NOMBRE_BANDA[b], FLOJO)
 
         for i, vr in enumerate(VELOCIDADES):
             p = paso(vjug, vr)
@@ -198,42 +214,64 @@ def dibuja_trayectorias(ruta, vram, cuadros=150):
                 L.caja(x, y, x + esc, y + 2, CURVAS[i])
                 antes = pos
                 pos = (pos - p) & 0xFF
+        if n == len(paneles) - 1:
+            L.texto(izq, base + alto + 14,
+                    "A TOPE, TRES RIVALES SE QUEDAN CLAVADOS: LA DIVISION "
+                    "ENTRE 16 REDONDEA SU DIFERENCIA A CERO", FLOJO)
+        elif n == 0:
+            L.texto(izq, base + alto + 14,
+                    "LENTO TU, TE PASAN SIN PARAR: LAS LINEAS DAN LA VUELTA "
+                    "ENTERA Y REAPARECEN POR ARRIBA", FLOJO)
+
+    L.derecha(izq - 10, arr - 40, "DISTANCIA", FLOJO)
+    L.derecha(izq - 10, arr - 28, "AL RIVAL", FLOJO)
     L.guardar(ruta)
     return [v for v, _ in paneles]
 
 
-def dibuja_franjas(rom, org, notas, ruta, vram):
+# ---------------------------------------------------------------------------
+def dibuja_franjas(rom, org, notas, ruta):
     """Las cuatro franjas del byte 1, con la tabla de 0x7FEE leida de la ROM."""
     ini, fin = rango_por_nombre(notas, "tabla_x_del_cruce")
     tabla = rom[ini - org:fin - org]
     # 0x7D02: los cortes de la X del jugador y el byte 1 que deja cada franja
     cortes = [(0, 0x59, 0), (0x59, 0x71, 3), (0x71, 0x99, 4), (0x99, 0x100, 1)]
-    COLOR = {0: (0x7C, 0xD0, 0x7D), 3: (0xE8, 0xC8, 0x50),
-             4: (0xF0, 0x90, 0x58), 1: (0x9C, 0xB0, 0xF0)}
+    COLOR = {0: (0x6E, 0xC8, 0x8A), 3: (0xE6, 0xC6, 0x54),
+             4: (0xF0, 0x8A, 0x58), 1: (0x8E, 0xA8, 0xF0)}
 
-    esc, izq, arr = 3, 16, 20
-    L = Lienzo(izq * 2 + 256 * esc, arr + 146)
+    esc, izq, arr = 3, 60, 96
+    L = Lienzo(izq * 2 + 256 * esc, arr + 214)
+    L.texto(20, 16, "POR DONDE TE CRUZA UN RIVAL", TINTA, 2)
+    L.texto(20, 36, "EL BYTE 1 DE SU FICHA NO DICE DE QUE CARRIL VIENE EL "
+            "RIVAL: 0x7D02 LO ESCRIBE", FLOJO)
+    L.texto(20, 50, "MIRANDO 0xE121, QUE ES LA X DE TU PROPIO COCHE", FLOJO)
+
+    L.texto(izq, arr - 18, "DONDE ESTA TU COCHE, Y EL BYTE 1 QUE DEJA:", TINTA)
     for x0, x1, v in cortes:
-        L.caja(izq + x0 * esc, arr, izq + x1 * esc, arr + 54, COLOR[v])
-        cifra(L, vram, izq + (x0 + x1) // 2 * esc - 8, arr + 20, v, FONDO, 2)
-    # debajo, la X con la que 0x7F99 compara la del jugador: sale de la ROM.
-    # Cada franja se une con SU X por una diagonal, porque casi ninguna cae
-    # debajo de la franja que la elige.
+        L.caja(izq + x0 * esc, arr, izq + x1 * esc, arr + 46, COLOR[v])
+        L.centrado(izq + x0 * esc, izq + x1 * esc, arr + 8, str(v), FONDO, 3)
+        L.centrado(izq + x0 * esc, izq + x1 * esc, arr + 34,
+                   "%d-%d" % (x0, x1 - 1), FONDO)
+    for x in range(0, 257, 32):
+        L.caja(izq + x * esc, arr + 46, izq + x * esc + 1, arr + 54, FLOJO)
+        L.centrado(izq + x * esc - 12, izq + x * esc + 12, arr + 58,
+                   str(x), FLOJO)
+
+    L.texto(izq, arr + 76, "Y LA X CON LA QUE 0x7F99 LO COMPARA DESPUES, "
+            "SACADA DE LA TABLA DE 0x7FEE:", TINTA)
     for x0, x1, v in cortes:
         if v >= len(tabla):
             continue
         xa = izq + (x0 + x1) // 2 * esc
         xb = izq + tabla[v] * esc
-        for k in range(41):                    # la diagonal, de la franja a su X
-            t = k / 40.0
-            L.caja(int(xa + (xb - xa) * t), arr + 58 + k,
-                   int(xa + (xb - xa) * t) + 2, arr + 59 + k, COLOR[v])
-        L.caja(xb - 1, arr + 99, xb + 2, arr + 108, COLOR[v])
-        cifra(L, vram, xb - 12, arr + 110, tabla[v], COLOR[v])
-    # la regla de la X del coche del jugador, de 0 a 255
-    for x in range(0, 256, 32):
-        L.caja(izq + x * esc, arr + 46, izq + x * esc + 1, arr + 54, TINTA)
-        cifra(L, vram, izq + x * esc - 8, arr + 128, x, APAGADO)
+        for k in range(31):
+            t = k / 30.0
+            L.caja(xa + (xb - xa) * t, arr + 92 + k,
+                   xa + (xb - xa) * t + 2, arr + 93 + k, COLOR[v])
+        L.caja(xb - 1, arr + 123, xb + 2, arr + 140, COLOR[v])
+        L.centrado(xb - 14, xb + 14, arr + 144, str(tabla[v]), COLOR[v])
+    L.texto(izq, arr + 168, "CASI NINGUNA CAE DEBAJO DE LA FRANJA QUE LA "
+            "ELIGIO: POR ESO LAS RAYAS SE CRUZAN", FLOJO)
     L.guardar(ruta)
     return tabla
 
@@ -246,15 +284,14 @@ def main(argv):
     org = int(argv[2], 0)
     notas, destino = argv[3], argv[4]
     os.makedirs(destino, exist_ok=True)
-    vram = glifos(rom, org, notas)
 
-    n = dibuja_recorrido(os.path.join(destino, "recorrido.png"), vram)
+    n = dibuja_recorrido(os.path.join(destino, "recorrido.png"))
     print("  recorrido.png: %d velocidades de rival, con el paso de 0x7CCB" % n)
-    vs = dibuja_trayectorias(os.path.join(destino, "trayectorias.png"), vram)
+    vs = dibuja_trayectorias(os.path.join(destino, "trayectorias.png"))
     print("  trayectorias.png: el recorrido con tu coche a %s"
           % ", ".join(str(v) for v in vs))
     tabla = dibuja_franjas(rom, org, notas,
-                           os.path.join(destino, "franjas.png"), vram)
+                           os.path.join(destino, "franjas.png"))
     print("  franjas.png: las cuatro franjas de 0x7D02 y la tabla de 0x7FEE (%s)"
           % " ".join("0x%02X" % b for b in tabla))
     return 0

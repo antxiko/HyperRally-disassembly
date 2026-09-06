@@ -94,7 +94,6 @@ control: $(ROM)
 # make_web.py, que declara las cifras medidas de ESTE cartucho.
 web: $(ROM)
 	python3 tools/graficos.py $(ROM) $(ORG) $(SRC)/hyperrally.notes docs/imagenes
-	python3 tools/recorrido.py $(ROM) $(ORG) $(SRC)/hyperrally.notes docs/imagenes
 	python3 tools/md2html.py docs en
 	python3 tools/md2html.py docs/es es
 	python3 tools/make_web.py docs/imagenes docs/index.html en
