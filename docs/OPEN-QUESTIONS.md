@@ -15,10 +15,3 @@ What the binary does not settle on its own:
 - **Full-screen rendering.** The website draws the font and the road tiles from
   the ROM; composing a whole stage screen would need the two-layer script
   interpreter (0x44B0) and the road renderer ported to Python too.
-- **A second writer of byte 0 that never fired.** 0x7CFF writes byte 0 of an
-  opponent's record with a value pulled from a nine-byte ring at 0xE0DF, walked
-  by the pointer at 0xE0DE. It is behind `cp 0f0h / ret c` on byte 1, and byte 1
-  was measured taking only the values 0, 1, 3 and 4 — so over 45 seconds of
-  racing, with a write watchpoint on the record, **that write never happened
-  once**. What sets byte 1 to 0xF0 or above, and what that ring holds, is not
-  settled here.

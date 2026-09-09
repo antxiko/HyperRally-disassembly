@@ -4779,12 +4779,12 @@ AVANZA_RIVAL_APLICA:
 	sub c			;7ce5
 	ld (hl),a			;7ce6   ; la unica escritura del byte 0 de la ficha en todo el cartucho
 	ret			;7ce7
-DETECTA_CHOQUE:		; Comprueba si el jugador ha alcanzado a un rival
-	inc hl			;7ce8   ; comprueba si el jugador alcanza al rival
-	ld a,(hl)			;7ce9
-	dec hl			;7cea   ; lee la banda del rival alcanzado
-	cp 0f0h		;7ceb
-	ret c			;7ced
+DETECTA_CHOQUE:		; Se entra con HL en el BYTE 1: la puerta mira el BYTE 2
+	inc hl			;7ce8   ; OJO: 0x7A02 hizo `inc hl` antes del CALL, asi que HL es el BYTE 1
+	ld a,(hl)			;7ce9   ; luego esto lee el BYTE 2, que es el byte 0 del cuadro ANTERIOR
+	dec hl			;7cea
+	cp 0f0h		;7ceb   ; la puerta: pide que el byte 0 del cuadro anterior sea 0xF0 o mas
+	ret c			;7ced   ; medido en openMSX: 5.804 llamadas en tres tiradas y NO se abre ni una
 	ld de,(0e0deh)		;7cee
 	ld a,e			;7cf2
 	cp 0e7h		;7cf3
@@ -4794,7 +4794,7 @@ DETECTA_CHOQUE:		; Comprueba si el jugador ha alcanzado a un rival
 DETECTA_CHOQUE_7CFA:
 	inc de			;7cfa
 	ld (0e0deh),de		;7cfb
-	ld (hl),a			;7cff
+	ld (hl),a			;7cff   ; escribe el BYTE 1, no el 0; el valor sale del anillo de 0xE0DF
 	ld c,a			;7d00
 	ret			;7d01
 FIJA_FRANJA_CRUCE:		; Apunta por que franja te cruza el rival

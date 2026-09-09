@@ -268,6 +268,43 @@ the `ld (hl),e` at 0x7D17:
 975 out of 975 inside their own band, no exceptions. (89 never shows up because
 the car's X moves two at a time.)
 
+## The write at 0x7CFF is one byte over, and it can never fire
+
+An earlier answer on issue #3 said 0x7CFF was a second writer of **byte 0**,
+gated by `cp 0f0h / ret c` on **byte 1**, and that it never fired in 45 seconds.
+Two of those three were wrong, and the third was measured on a game that was not
+running.
+
+`RIVAL_COLISION` (0x7A00) does `inc hl` at 0x7A02 *before* the `call`, so inside
+`DETECTA_CHOQUE` (0x7CE8) HL is already sitting on **byte 1**. That shifts
+everything along one:
+
+- the gate reads **byte 2** — the opponent's byte 0 from the previous frame, the
+  same pairing the rank counter at 0x6B7D uses
+- what 0x7CFF writes is **byte 1**
+
+Measured in openMSX with breakpoints on the whole chain — 0x7A00, the `call` at
+0x7A15, 0x7CE8 and 0x7CFF — across three runs (45 s and 90 s of stage 1, 120 s
+of stage 5):
+
+| | |
+|---|---|
+| calls into DETECTA_CHOQUE | **5,804** |
+| times the gate opened | **0** |
+| highest byte 2 seen at the gate | 0xEE |
+
+And it cannot be opened by driving. To reach the `call` at all, `RIVAL_COLISION`
+needs byte 0 between 0x28 and 0xEF: from 0xF0 up, the `add a,010h` wraps and the
+flow leaves through RIVAL_REPARTE. So the gate needs byte 0 to jump from
+0xF0..0xFF straight to 0x28 or more within a single frame — an advance of at
+least **+0x29**. Over 4,368 frame-records the largest advance seen was
+**+0x0B**.
+
+As for "it never fired in 45 seconds": that came from a probe that set the stage
+number in 0xE060 and never actually started the race, so the game sat on the
+attract screen where none of these routines run. Every counter in that probe
+read zero, which was the tell.
+
 ## 0x6B7D does not write to the VRAM: it is the RANK counter
 
 It was called COLOCA_RIVALES_VRAM and it does not write a single cell. What it

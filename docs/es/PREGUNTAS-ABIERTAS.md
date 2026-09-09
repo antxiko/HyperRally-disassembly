@@ -17,11 +17,3 @@ Lo que el binario no cierra por sí solo:
   la carretera desde la ROM; componer una pantalla de etapa entera pediría portar
   a Python también el intérprete de guiones de dos capas (0x44B0) y el
   renderizador de la carretera.
-- **Un segundo escritor del byte 0 que no llegó a saltar.** 0x7CFF escribe el
-  byte 0 de la ficha de un rival con un valor sacado de un anillo de nueve bytes
-  en 0xE0DF, recorrido por el puntero de 0xE0DE. Está detrás de un
-  `cp 0f0h / ret c` sobre el byte 1, y del byte 1 se midió que sólo toma los
-  valores 0, 1, 3 y 4 — así que en 45 segundos de carrera, con un punto de
-  observación de escritura sobre la ficha, **esa escritura no ocurrió ni una
-  vez**. Qué pone el byte 1 en 0xF0 o más, y qué guarda ese anillo, no se cierra
-  aquí.

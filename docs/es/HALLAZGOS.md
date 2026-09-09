@@ -270,6 +270,43 @@ lado, 975 pasadas por el `ld (hl),e` de 0x7D17:
 975 de 975 dentro de su franja, cero excepciones. (El 89 no aparece porque la X
 del coche va de dos en dos.)
 
+## La escritura de 0x7CFF va un byte corrida, y no puede saltar nunca
+
+Una respuesta anterior en el issue #3 decía que 0x7CFF era un segundo escritor
+del **byte 0**, con una puerta `cp 0f0h / ret c` sobre el **byte 1**, y que en
+45 segundos no llegó a saltar. Dos de las tres cosas estaban mal, y la tercera
+se midió con el juego parado.
+
+`RIVAL_COLISION` (0x7A00) hace `inc hl` en 0x7A02 *antes* del `call`, así que
+dentro de `DETECTA_CHOQUE` (0x7CE8) HL ya está en el **byte 1**. Y eso corre
+todo un byte:
+
+- la puerta lee el **byte 2** —el byte 0 del rival en el cuadro anterior, la
+  misma pareja que usa el marcador de puesto de 0x6B7D—
+- lo que escribe 0x7CFF es el **byte 1**
+
+Medido en openMSX con puntos de ruptura en toda la cadena —0x7A00, el `call` de
+0x7A15, 0x7CE8 y 0x7CFF—, en tres tiradas (45 s y 90 s de la etapa 1, 120 s de
+la etapa 5):
+
+| | |
+|---|---|
+| llamadas a DETECTA_CHOQUE | **5.804** |
+| veces que se abre la puerta | **0** |
+| el mayor byte 2 visto en la puerta | 0xEE |
+
+Y conduciendo no se puede abrir. Para llegar siquiera al `call`,
+`RIVAL_COLISION` pide el byte 0 entre 0x28 y 0xEF: de 0xF0 en adelante el
+`add a,010h` da la vuelta y se sale por RIVAL_REPARTE. Así que la puerta
+necesita que el byte 0 salte de 0xF0..0xFF a 0x28 o más en un solo cuadro, o sea
+un avance de **+0x29** por lo menos. En 4.368 cuadros-ficha el mayor avance
+medido fue **+0x0B**.
+
+Y lo de "en 45 segundos no saltó ni una vez" salió de una sonda que ponía la
+etapa en 0xE060 y nunca llegaba a arrancar la carrera: el juego se quedaba en la
+pantalla de atracción, donde ninguna de estas rutinas corre. Todos los
+contadores de aquella sonda daban cero, que era la pista.
+
 ## 0x6B7D no escribe en la VRAM: es el marcador RANK
 
 Se llamaba COLOCA_RIVALES_VRAM y no escribe una sola casilla. Lo que hace es

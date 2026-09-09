@@ -1229,10 +1229,13 @@ L 0x7cd9 AVANZA_RIVAL_SE_ESCAPA
 C 0x7cd9 el rival corre mas que tu: el resultado sale con signo cambiado
 L 0x7ce3 AVANZA_RIVAL_APLICA
 C 0x7ce6 la unica escritura del byte 0 de la ficha en todo el cartucho
-L 0x7ce8 DETECTA_CHOQUE  Comprueba si el jugador ha alcanzado a un rival
-C 0x7ce8 comprueba si el jugador alcanza al rival
-C 0x7cea lee la banda del rival alcanzado
+L 0x7ce8 DETECTA_CHOQUE  Se entra con HL en el BYTE 1: la puerta mira el BYTE 2
+C 0x7ce8 OJO: 0x7A02 hizo `inc hl` antes del CALL, asi que HL es el BYTE 1
+C 0x7ce9 luego esto lee el BYTE 2, que es el byte 0 del cuadro ANTERIOR
+C 0x7ceb la puerta: pide que el byte 0 del cuadro anterior sea 0xF0 o mas
+C 0x7ced medido en openMSX: 5.804 llamadas en tres tiradas y NO se abre ni una
 L 0x7cfa DETECTA_CHOQUE_7CFA
+C 0x7cff escribe el BYTE 1, no el 0; el valor sale del anillo de 0xE0DF
 L 0x7d02 FIJA_FRANJA_CRUCE  Apunta por que franja te cruza el rival
 C 0x7d02 el byte 1 de la ficha sale de la X del JUGADOR, no de la del rival
 C 0x7d04 0xE121 es la X del primer sprite del coche del jugador
