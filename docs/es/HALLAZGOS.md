@@ -10,6 +10,35 @@ Hyper Rally los últimos once bytes, desde 0x7FF5, son el título al revés, su
 longitud (8), el **18** del RC-718 en BCD, y el 0xAA que cierra la marca.
 `tools/marca_konami.py` la lee.
 
+## El acelerador NO se desactiva al chocar: es protección anticopia
+
+En 0x79C8, al final de la rutina que sortea la velocidad del próximo rival, hay
+una escritura que este proyecto tenía comentada como *"desactiva el acelerador
+tras un choque"*. **No lo hace, y además lo que decía de paso era falso.**
+
+    ld a,0c9h        ;79c6
+    ld (06957h),a    ;79c8
+
+El comentario daba por hecho que 0x6957 era un `ret`. No lo es: 0x6957 es el
+**primer byte de `ACELERA`**, y lo que hay ahí es `ld a,(0e00ah)`. Lo que hace
+la escritura es meter un `0xC9` —un `ret`— encima de ese primer byte, con lo
+que `ACELERA` se convertiría en un `ret` pelado y el coche no volvería a
+acelerar en toda la partida.
+
+**Se convertiría.** El cartucho corre desde ROM, y la ROM no admite escritura:
+en una máquina de verdad esa instrucción no cambia nada. Después de un choque
+el acelerador sigue funcionando igual que antes.
+
+Entonces, ¿para qué está? Para lo mismo que la que lleva el RC-720 sobre el
+`ret` de su manejador de interrupción: **es protección anticopia**. Un cartucho
+pirateado es una copia cargada en RAM, y en RAM la escritura sí cuela. La copia
+arranca bien, deja elegir, deja jugar — y al primer choque el coche se queda sin
+acelerador. Para entonces quien la copió ya la ha dado por buena.
+
+No es una idea suelta de este cartucho: el mismo truco, con el destino siempre
+sobre una instrucción del propio cartucho, aparece en al menos diez de la serie.
+Lo identificó **Manuel Pazos** en su desensamblado del RC-727, donde hay dos.
+
 ## Todo el juego es una interrupción
 
 INIT cae en un `jr` muerto en 0x404F y no vuelve. Cada cuadro la interrupción lee

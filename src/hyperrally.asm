@@ -4263,8 +4263,8 @@ SORTEA_VELOCIDAD_RIVAL_79BB:
 	add a,a			;79c1
 	add a,c			;79c2
 	ld (0e09ch),a		;79c3
-	ld a,0c9h		;79c6
-	ld (06957h),a		;79c8   ; desactiva el acelerador tras un choque (0x6957 = ret)
+	ld a,0c9h		;79c6   ; el 0xC9 que va a escribir es un `ret`
+	ld (06957h),a		;79c8   ; PROTECCION ANTICOPIA: mete ese `ret` en 0x6957, que no es un `ret` sino el primer byte de ACELERA. Corriendo desde ROM la escritura NO llega, asi que en el cartucho de verdad el acelerador sigue vivo despues de un choque; en una copia cargada en RAM si cuela, ACELERA se vuelve un `ret` pelado y el coche ya no acelera. Es la misma idea que gasta el RC-720 sobre el `ret` de su manejador de interrupcion
 	ret			;79cb
 ACTUALIZA_RIVAL:		; Un rival: avanza, escala por profundidad y colisiona
 	ld a,(0e09fh)		;79cc   ; avanza un rival, lo escala y mira el choque

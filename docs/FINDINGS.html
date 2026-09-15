@@ -86,6 +86,14 @@ audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
 <h1 id="findings">Findings</h1>
 <h2 id="konami-s-hidden-mark-is-here">Konami&#x27;s hidden mark is here</h2>
 <p>Behind the filler at the end of the ROM, Konami hid in many cartridges its catalogue number and the title in katakana. The find is not ours: <b>Manuel Pazos</b> (<a href="https://twitter.com/ManuelPazosMSX">@ManuelPazosMSX</a>) uncovered it and explained the format. In Hyper Rally the last eleven bytes, from 0x7FF5, are the title reversed, its length (8), the <b>18</b> of RC-718 in BCD, and the 0xAA that closes the mark. <code>tools/marca_konami.py</code> reads it.</p>
+<h2 id="the-accelerator-is-not-disabled-on-a-crash-it-is-copy-protection">The accelerator is NOT disabled on a crash: it is copy protection</h2>
+<p>At 0x79C8, at the end of the routine that rolls the next rival&#x27;s speed, there is a write that this project used to comment as <em>&quot;disables the accelerator after a crash&quot;</em>. <b>It does not, and what it said in passing was wrong too.</b></p>
+<pre><code>ld a,0c9h        ;79c6
+ld (06957h),a    ;79c8</code></pre>
+<p>The comment assumed 0x6957 was a <code>ret</code>. It is not: 0x6957 is the <b>first byte of <code>ACELERA</code></b>, and what sits there is <code>ld a,(0e00ah)</code>. What the write does is put a <code>0xC9</code> —a <code>ret</code>— over that first byte, which would turn <code>ACELERA</code> into a bare <code>ret</code> and leave the car unable to accelerate for the rest of the game.</p>
+<p><b>Would.</b> The cartridge runs from ROM, and ROM does not take writes: on real hardware that instruction changes nothing. After a crash the accelerator works exactly as before.</p>
+<p>So what is it for? The same thing as the one RC-720 carries over the <code>ret</code> of its interrupt handler: <b>it is copy protection</b>. A pirated cartridge is a copy loaded into RAM, and in RAM the write does land. The copy boots fine, lets you choose, lets you play — and on the first crash the car loses its accelerator. By then whoever copied it has already signed it off.</p>
+<p>It is not a one-off idea in this cartridge: the same trick, always aimed at an instruction inside the cartridge itself, turns up in at least ten of the series. <b>Manuel Pazos</b> identified it in his disassembly of RC-727, which has two.</p>
 <h2 id="the-whole-game-is-one-interrupt">The whole game is one interrupt</h2>
 <p>INIT falls into a dead <code>jr</code> at 0x404F and never returns. Every frame the interrupt reads the state at 0xE000 and jumps through the nine-handler table at 0x40AA; inside each handler the sub-state at 0xE001 drives a <code>djnz</code> chain. It is a compact way to run a sequence of screens and phases with two bytes of state.</p>
 <h2 id="the-road-is-a-lookup-not-geometry">The road is a lookup, not geometry</h2>

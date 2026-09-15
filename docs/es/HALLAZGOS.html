@@ -86,6 +86,14 @@ audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
 <h1 id="hallazgos">Hallazgos</h1>
 <h2 id="lleva-la-marca-oculta-de-konami">Lleva la marca oculta de Konami</h2>
 <p>Detrás del relleno del final de la ROM, Konami escondía en muchos cartuchos su número de catálogo y el título en katakana. El hallazgo no es nuestro: lo descubrió <b>Manuel Pazos</b> (<a href="https://twitter.com/ManuelPazosMSX">@ManuelPazosMSX</a>) y explicó el formato. En Hyper Rally los últimos once bytes, desde 0x7FF5, son el título al revés, su longitud (8), el <b>18</b> del RC-718 en BCD, y el 0xAA que cierra la marca. <code>tools/marca_konami.py</code> la lee.</p>
+<h2 id="el-acelerador-no-se-desactiva-al-chocar-es-proteccion-anticopia">El acelerador NO se desactiva al chocar: es protección anticopia</h2>
+<p>En 0x79C8, al final de la rutina que sortea la velocidad del próximo rival, hay una escritura que este proyecto tenía comentada como <em>&quot;desactiva el acelerador tras un choque&quot;</em>. <b>No lo hace, y además lo que decía de paso era falso.</b></p>
+<pre><code>ld a,0c9h        ;79c6
+ld (06957h),a    ;79c8</code></pre>
+<p>El comentario daba por hecho que 0x6957 era un <code>ret</code>. No lo es: 0x6957 es el <b>primer byte de <code>ACELERA</code></b>, y lo que hay ahí es <code>ld a,(0e00ah)</code>. Lo que hace la escritura es meter un <code>0xC9</code> —un <code>ret</code>— encima de ese primer byte, con lo que <code>ACELERA</code> se convertiría en un <code>ret</code> pelado y el coche no volvería a acelerar en toda la partida.</p>
+<p><b>Se convertiría.</b> El cartucho corre desde ROM, y la ROM no admite escritura: en una máquina de verdad esa instrucción no cambia nada. Después de un choque el acelerador sigue funcionando igual que antes.</p>
+<p>Entonces, ¿para qué está? Para lo mismo que la que lleva el RC-720 sobre el <code>ret</code> de su manejador de interrupción: <b>es protección anticopia</b>. Un cartucho pirateado es una copia cargada en RAM, y en RAM la escritura sí cuela. La copia arranca bien, deja elegir, deja jugar — y al primer choque el coche se queda sin acelerador. Para entonces quien la copió ya la ha dado por buena.</p>
+<p>No es una idea suelta de este cartucho: el mismo truco, con el destino siempre sobre una instrucción del propio cartucho, aparece en al menos diez de la serie. Lo identificó <b>Manuel Pazos</b> en su desensamblado del RC-727, donde hay dos.</p>
 <h2 id="todo-el-juego-es-una-interrupcion">Todo el juego es una interrupción</h2>
 <p>INIT cae en un <code>jr</code> muerto en 0x404F y no vuelve. Cada cuadro la interrupción lee el estado de 0xE000 y salta por la tabla de nueve manejadores de 0x40AA; dentro de cada manejador el subestado de 0xE001 mueve una cadena de <code>djnz</code>. Es una forma compacta de encadenar pantallas y fases con dos bytes de estado.</p>
 <h2 id="la-carretera-es-una-tabla-no-geometria">La carretera es una tabla, no geometría</h2>

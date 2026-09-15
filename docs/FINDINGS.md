@@ -9,6 +9,34 @@ explained the format. In Hyper Rally the last eleven bytes, from 0x7FF5, are the
 title reversed, its length (8), the **18** of RC-718 in BCD, and the 0xAA that
 closes the mark. `tools/marca_konami.py` reads it.
 
+## The accelerator is NOT disabled on a crash: it is copy protection
+
+At 0x79C8, at the end of the routine that rolls the next rival's speed, there
+is a write that this project used to comment as *"disables the accelerator
+after a crash"*. **It does not, and what it said in passing was wrong too.**
+
+    ld a,0c9h        ;79c6
+    ld (06957h),a    ;79c8
+
+The comment assumed 0x6957 was a `ret`. It is not: 0x6957 is the **first byte
+of `ACELERA`**, and what sits there is `ld a,(0e00ah)`. What the write does is
+put a `0xC9` —a `ret`— over that first byte, which would turn `ACELERA` into a
+bare `ret` and leave the car unable to accelerate for the rest of the game.
+
+**Would.** The cartridge runs from ROM, and ROM does not take writes: on real
+hardware that instruction changes nothing. After a crash the accelerator works
+exactly as before.
+
+So what is it for? The same thing as the one RC-720 carries over the `ret` of
+its interrupt handler: **it is copy protection**. A pirated cartridge is a copy
+loaded into RAM, and in RAM the write does land. The copy boots fine, lets you
+choose, lets you play — and on the first crash the car loses its accelerator.
+By then whoever copied it has already signed it off.
+
+It is not a one-off idea in this cartridge: the same trick, always aimed at an
+instruction inside the cartridge itself, turns up in at least ten of the series.
+**Manuel Pazos** identified it in his disassembly of RC-727, which has two.
+
 ## The whole game is one interrupt
 
 INIT falls into a dead `jr` at 0x404F and never returns. Every frame the

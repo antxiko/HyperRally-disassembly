@@ -1114,7 +1114,8 @@ C 0x79a9 sortea la velocidad del proximo rival (0xE09C), NO su color
 C 0x79ab la base sale de la etapa: 0xA0, y 0x88 con el bit 2 puesto
 C 0x79bb base + (R & 3) * 8: cuatro velocidades por base
 L 0x79bb SORTEA_VELOCIDAD_RIVAL_79BB
-C 0x79c8 desactiva el acelerador tras un choque (0x6957 = ret)
+C 0x79c6 el 0xC9 que va a escribir es un `ret`
+C 0x79c8 PROTECCION ANTICOPIA: mete ese `ret` en 0x6957, que no es un `ret` sino el primer byte de ACELERA. Corriendo desde ROM la escritura NO llega, asi que en el cartucho de verdad el acelerador sigue vivo despues de un choque; en una copia cargada en RAM si cuela, ACELERA se vuelve un `ret` pelado y el coche ya no acelera. Es la misma idea que gasta el RC-720 sobre el `ret` de su manejador de interrupcion
 L 0x79cc ACTUALIZA_RIVAL  Un rival: avanza, escala por profundidad y colisiona
 C 0x79cc avanza un rival, lo escala y mira el choque
 L 0x79d8 RIVAL_NIVEL  Clasifica al rival en tres niveles de cercania
