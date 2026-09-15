@@ -24,9 +24,9 @@ bytes, sha256
 |---|---|
 | reensambla byte a byte | sí |
 | bytes explicados | 16.384 de 16.384 (100 %) |
-| código trazado | 6.464 bytes, 3.356 instrucciones |
-| datos identificados | 9.920 bytes en 50 rangos con nombre |
-| comentado | 762 comentarios de línea, 22,7 % |
+| código trazado | 6.446 bytes, 3.344 instrucciones |
+| datos identificados | 9.938 bytes en 52 rangos con nombre |
+| comentado | 763 comentarios de línea, 22,8 % |
 | rutinas flojas (bajo el 10 %) | 0 de 430 |
 
 Las anotaciones viven aparte del listado, ancladas a la dirección que describen,
@@ -34,9 +34,9 @@ así que sobreviven a un retrazado. Lo que guarda el fichero `.notes`:
 
 | | |
 |---|---|
-| etiquetas con nombre | 431 |
-| comentarios anclados | 727 |
-| rangos de datos con explicación | 50 |
+| etiquetas con nombre | 428 |
+| comentarios anclados | 728 |
+| rangos de datos con explicación | 52 |
 
 ## Qué hay aquí
 

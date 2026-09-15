@@ -806,7 +806,7 @@ L 0x6861 DIBUJA_CUENTAKM  Pinta el cuentakilometros/rotulo lateral por tablas
 C 0x6861 pinta el cuentakilometros por tablas
 C 0x6864 compara con 8 (las dos etapas de noche)
 C 0x6866 de noche el rotulo lateral va por otras tablas
-C 0x6868 empuja la continuacion como retorno
+C 0x6868 empuja el puntero a la tabla de dia de 0x68BE. NO es una direccion de retorno: la recoge el pop hl de 0x6894
 C 0x686c apunta a la tabla del cuentakm (0x7531)
 L 0x687d DIBUJA_CUENTAKM_687D
 L 0x6888 CUENTAKM_INDEXA
@@ -815,16 +815,19 @@ C 0x6889 dobla el indice
 C 0x688a suma el indice a la base de la tabla
 C 0x688b lo suma a la base
 C 0x688e lee el desplazamiento
+C 0x6894 recoge el puntero que se empujo: la tabla de dia (0x68BE) o la de noche (0x68C7)
+C 0x689a el byte de esa tabla que toca, segun 0xE075, que se suma a 0x39A0
 L 0x68a2 DIBUJA_CUENTAKM_NOCHE  Variante para las etapas de noche
 C 0x68a2 variante del rotulo lateral para las etapas de noche
+C 0x68a5 y aqui el puntero a la tabla de noche, 0x68C7
 C 0x68a6 apunta a las tablas de la variante de noche
 C 0x68a9 tabla de la variante de noche (0x78C3)
 C 0x68ac lee la curvatura (0xE074)
 C 0x68b0 la parte alta
-L 0x68be SIGUE_CUENTAKM  Continuacion tras pintar (retorno empujado)
-C 0x68be continua el dibujo tras pintar el rotulo
-L 0x68c7 SIGUE_CUENTAKM_NOCHE  Continuacion de la variante de noche
-C 0x68c7 continua el dibujo de la variante de noche
+D 0x68be 0x68c7 cuentakm_dia  Rotulo lateral de dia: nueve bytes que se suman a 0x39A0. Se llega por el puntero que empuja 0x6868 y recoge el pop hl de 0x6894; el trazado los habia seguido como codigo y de ahi salia un falso ld (02f2fh),a sobre la ROM de la BIOS
+F 0x68be 9
+D 0x68c7 0x68d0 cuentakm_noche  Los nueve de noche, empujados en 0x68A2
+F 0x68c7 9
 L 0x68d0 DIBUJA_CARRETERA  Dibuja el trazado de la carretera segun la curvatura 0xE074
 C 0x68d0 lee el parametro de etapa
 C 0x68d3 compara con 8
@@ -835,7 +838,6 @@ C 0x68e6 saca el puntero de la forma
 L 0x68ec DIBUJA_BORDES_TUNEL  Pinta los bordes solo en el tunel (0xE061=1)
 L 0x68f5 DIBUJA_BORDES_1
 C 0x68f5 dibuja el borde con otra tabla
-L 0x68f9 INIT_68F9
 L 0x6905 BORDES_INDEXA
 C 0x6905 mete la curvatura en el indice de bordes
 C 0x6907 la parte alta de la curvatura

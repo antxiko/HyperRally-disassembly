@@ -10,12 +10,6 @@
 
 
 ; ----------------------------------------------------------------------
-; Etiquetas que no caen en ninguna posicion emitida del listado
-; (destinos fuera del binario o dentro de una instruccion).
-; ----------------------------------------------------------------------
-INIT_68F9:	equ 0x068f9
-
-; ----------------------------------------------------------------------
 ; DATOS cabecera_cartucho: AB, el puntero INIT (0x4010) y los tres punteros a
 ;   cero
 ;   0x4000..0x4010  (16 bytes)
@@ -2691,7 +2685,7 @@ DATA_tabla_saltos_coche:
 	defb 004h,0b6h	; 6769
 
 ; ======================================================================
-; CODIGO 0x676b..0x6934  (457 bytes)
+; CODIGO 0x676b..0x68be  (339 bytes)
 ; ======================================================================
 
 
@@ -2860,7 +2854,7 @@ DIBUJA_CUENTAKM:		; Pinta el cuentakilometros/rotulo lateral por tablas
 	ld a,(0e061h)		;6861   ; pinta el cuentakilometros por tablas
 	cp 008h		;6864   ; compara con 8 (las dos etapas de noche)
 	jr z,DIBUJA_CUENTAKM_NOCHE		;6866   ; de noche el rotulo lateral va por otras tablas
-	ld hl,SIGUE_CUENTAKM		;6868   ; empuja la continuacion como retorno
+	ld hl,068beh		;6868   ; empuja el puntero a la tabla de dia de 0x68BE. NO es una direccion de retorno: la recoge el pop hl de 0x6894
 	push hl			;686b
 	ld hl,07531h		;686c   ; apunta a la tabla del cuentakm (0x7531)
 	ld de,075d6h		;686f
@@ -2886,17 +2880,17 @@ CUENTAKM_INDEXA:
 	ld b,h			;6891
 	add hl,de			;6892
 	ex de,hl			;6893
-	pop hl			;6894
+	pop hl			;6894   ; recoge el puntero que se empujo: la tabla de dia (0x68BE) o la de noche (0x68C7)
 	ld a,(0e075h)		;6895
 	ld c,a			;6898
 	add hl,bc			;6899
-	ld c,(hl)			;689a
+	ld c,(hl)			;689a   ; el byte de esa tabla que toca, segun 0xE075, que se suma a 0x39A0
 	ld hl,039a0h		;689b
 	add hl,bc			;689e
 	jp PINTA_ROTULO		;689f
 DIBUJA_CUENTAKM_NOCHE:		; Variante para las etapas de noche
-	ld hl,SIGUE_CUENTAKM_NOCHE		;68a2   ; variante del rotulo lateral para las etapas de noche
-	push hl			;68a5
+	ld hl,068c7h		;68a2   ; variante del rotulo lateral para las etapas de noche
+	push hl			;68a5   ; y aqui el puntero a la tabla de noche, 0x68C7
 	ld hl,07820h		;68a6   ; apunta a las tablas de la variante de noche
 	ld de,078c3h		;68a9   ; tabla de la variante de noche (0x78C3)
 	ld bc,(0e074h)		;68ac   ; lee la curvatura (0xE074)
@@ -2907,20 +2901,27 @@ DIBUJA_CUENTAKM_NOCHE:		; Variante para las etapas de noche
 	ld de,07834h		;68b8
 	ld a,b			;68bb
 	jr CUENTAKM_INDEXA		;68bc
-SIGUE_CUENTAKM:		; Continuacion tras pintar (retorno empujado)
-	cpl			;68be   ; continua el dibujo tras pintar el rotulo
-	jr nc,DIBUJA_BORDES_1		;68bf
-	ld (02f2fh),a		;68c1
-	dec hl			;68c4
-	inc l			;68c5
-	rrca			;68c6
-SIGUE_CUENTAKM_NOCHE:		; Continuacion de la variante de noche
-	jr nc,$+50		;68c7   ; continua el dibujo de la variante de noche
-	inc (hl)			;68c9
-	ld sp,02f2fh		;68ca
-	dec hl			;68cd
-	dec l			;68ce
-	rrca			;68cf
+
+; ----------------------------------------------------------------------
+; DATOS cuentakm_dia: Rotulo lateral de dia: nueve bytes que se suman a
+;   0x39A0. Se llega por el puntero que empuja 0x6868 y recoge el pop hl de
+;   0x6894; el trazado los habia seguido como codigo y de ahi salia un falso
+;   ld (02f2fh),a sobre la ROM de la BIOS
+;   0x68be..0x68c7  (9 bytes)
+DATA_cuentakm_dia:
+	defb 02fh,030h,034h,032h,02fh,02fh,02bh,02ch,00fh	; 68be  /042//+,.
+
+; ----------------------------------------------------------------------
+; DATOS cuentakm_noche: Los nueve de noche, empujados en 0x68A2
+;   0x68c7..0x68d0  (9 bytes)
+DATA_cuentakm_noche:
+	defb 030h,030h,034h,031h,02fh,02fh,02bh,02dh,00fh	; 68c7  0041//+-.
+
+; ======================================================================
+; CODIGO 0x68d0..0x6934  (100 bytes)
+; ======================================================================
+
+
 DIBUJA_CARRETERA:		; Dibuja el trazado de la carretera segun la curvatura 0xE074
 	ld a,(0e061h)		;68d0   ; lee el parametro de etapa
 	cp 008h		;68d3   ; compara con 8

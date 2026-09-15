@@ -24,9 +24,9 @@ The ROM is **not distributed here**. It goes in the root as `hyperrally.rom`,
 |---|---|
 | reassembles byte for byte | yes |
 | bytes explained | 16,384 of 16,384 (100 %) |
-| traced code | 6,464 bytes, 3,356 instructions |
-| identified data | 9,920 bytes in 50 named ranges |
-| commented | 762 line comments, 22.7 % |
+| traced code | 6,446 bytes, 3,344 instructions |
+| identified data | 9,938 bytes in 52 named ranges |
+| commented | 763 line comments, 22.8 % |
 | thin routines (under 10 %) | 0 of 430 |
 
 The annotations live apart from the listing, anchored to the address they
@@ -34,9 +34,9 @@ describe, so they survive a re-trace. What the `.notes` file holds:
 
 | | |
 |---|---|
-| named labels | 431 |
-| anchored comments | 727 |
-| explained data ranges | 50 |
+| named labels | 428 |
+| anchored comments | 728 |
+| explained data ranges | 52 |
 
 ## What is in here
 

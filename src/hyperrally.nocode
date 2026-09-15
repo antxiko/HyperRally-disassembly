@@ -1,3 +1,4 @@
 # Tablas de saltos en linea, marcadas como datos (acumulado).
 0x40aa 0x40bc  tabla de saltos de 0x407F
 0x481a 0x4834  tabla de saltos de 0x407F
+0x68be 0x68d0  las dos tablas del rotulo lateral: se llega a ellas por un puntero empujado en 0x6868 y 0x68A2 que recoge el pop hl de 0x6894, no por un retorno
