@@ -17,3 +17,12 @@ Lo que el binario no cierra por sí solo:
   la carretera desde la ROM; componer una pantalla de etapa entera pediría portar
   a Python también el intérprete de guiones de dos capas (0x44B0) y el
   renderizador de la carretera.
+- **¿Código o datos en 0x68BE?** Al volver de pintar el cuentakilómetros, el
+  juego retorna a una dirección que empuja él mismo: 0x68BE de día y 0x68C7 de
+  noche. Ahí hay dieciocho bytes que en crudo parecen dos filas de datos de nueve
+  (`2F 30 34 32 2F 2F 2B 2C 0F` y `30 30 34 31 2F 2F 2B 2D 0F`), y el trazado los
+  lista como código. Leídos como código hacen cosas raras: `ld (2F2Fh),a`, en
+  0x68C1, escribe en la ROM de la BIOS, que no admite escritura. O es código que
+  depende del acarreo con el que vuelve la rutina de pintar, o son datos que el
+  trazado se ha comido. Decidirlo pide mirar en el emulador si el procesador pasa
+  de verdad por 0x68C1.

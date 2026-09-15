@@ -36,7 +36,7 @@ arranca bien, deja elegir, deja jugar — y al primer choque el coche se queda s
 acelerador. Para entonces quien la copió ya la ha dado por buena.
 
 No es una idea suelta de este cartucho: el mismo truco, con el destino siempre
-sobre una instrucción del propio cartucho, aparece en al menos diez de la serie.
+sobre una instrucción del propio cartucho, aparece en trece cartuchos de la serie, contando éste.
 Lo identificó **Manuel Pazos** en su desensamblado del RC-727, donde hay dos.
 
 ## Todo el juego es una interrupción

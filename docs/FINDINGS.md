@@ -34,7 +34,7 @@ choose, lets you play — and on the first crash the car loses its accelerator.
 By then whoever copied it has already signed it off.
 
 It is not a one-off idea in this cartridge: the same trick, always aimed at an
-instruction inside the cartridge itself, turns up in at least ten of the series.
+instruction inside the cartridge itself, turns up in thirteen cartridges of the series, this one included.
 **Manuel Pazos** identified it in his disassembly of RC-727, which has two.
 
 ## The whole game is one interrupt

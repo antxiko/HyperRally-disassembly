@@ -15,3 +15,12 @@ What the binary does not settle on its own:
 - **Full-screen rendering.** The website draws the font and the road tiles from
   the ROM; composing a whole stage screen would need the two-layer script
   interpreter (0x44B0) and the road renderer ported to Python too.
+- **Code or data at 0x68BE?** On its way back from drawing the odometer, the
+  game returns to an address it pushed itself: 0x68BE by day and 0x68C7 by night.
+  There are eighteen bytes there that, read raw, look like two nine-byte rows of
+  data (`2F 30 34 32 2F 2F 2B 2C 0F` and `30 30 34 31 2F 2F 2B 2D 0F`), and the
+  trace lists them as code. Read as code they do odd things: `ld (2F2Fh),a`, at
+  0x68C1, writes to the BIOS ROM, which takes no writes. Either it is code that
+  depends on the carry the drawing routine returns with, or it is data the trace
+  has swallowed. Settling it means checking in the emulator whether the CPU
+  really goes through 0x68C1.
